@@ -1,0 +1,59 @@
+<main id="oncotics-precision-workspace" class="oncotics-workspace" aria-label="Oncotics Precision Oncology Workspace">
+  <a class="ow-skip" href="#ow-main">Skip to workspace</a>
+  <div class="ow-header" role="region" aria-label="Workspace header">
+    <div class="ow-header-top">
+      <div class="ow-brand">
+        <span class="ow-logo" data-ow-logo-slot>
+          <svg class="ow-logo-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#14B8A6" stroke-width="2.5"/><path d="M10 9c6 3 6 11 12 14M22 9c-6 3-6 11-12 14" fill="none" stroke="#E7F0FA" stroke-width="2.2" stroke-linecap="round"/><path d="M12 13h8M12 19h8" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Oncotics</span>
+        </span>
+        <div class="ow-brand-text">
+          <h1>Oncotics Precision Oncology Workspace</h1>
+          <p class="ow-tagline">Live evidence, trials, drugs, devices, diagnostics, vaccines, Onco-Fertility, biology, and literature in one privacy-first workspace.</p>
+        </div>
+      </div>
+      <div class="ow-header-actions" id="ow-header-actions"></div>
+    </div>
+    <div class="ow-search-wrap">
+      <div class="ow-row" style="margin-bottom:10px">
+        <span class="ow-privacy-badge" id="ow-privacy-badge">
+          <svg class="ow-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>Oncotics Privacy:</strong> Your searches are sent directly from your browser to selected public data providers and are not stored by Oncotics.</span>
+        </span>
+      </div>
+      <form class="ow-search" id="ow-search-form" role="search" autocomplete="off" novalidate>
+        <label for="ow-q" class="ow-sr">Search genes, variants, drugs, vaccines, devices, diagnostics, diseases, trials, fertility or imaging concepts</label>
+        <input id="ow-q" class="ow-input" type="search" name="ow-q" maxlength="160" spellcheck="false" autocapitalize="off" autocomplete="off"
+          placeholder="Search genes, variants, drugs, vaccines, devices, diagnostics, diseases, trials, PMIDs, rsIDs, HGVS, 510(k), fertility or imaging concepts..."
+          aria-describedby="ow-q-help ow-q-phi">
+        <button type="submit" class="ow-btn ow-btn-primary" id="ow-explore">Explore</button>
+      </form>
+      <div id="ow-input-error" role="alert" hidden></div>
+      <div class="ow-search-meta">
+        <span id="ow-q-help">Try a gene, variant, drug, vaccine, device, diagnostic, disease, trial ID, PMID, rsID, HGVS, 510(k), PMA, product code, UDI-DI, fertility preservation or imaging concept. Overview shows every interpretation with a confidence score. Press <kbd>/</kbd> to focus.</span>
+        <span id="ow-q-phi" class="ow-phi-warning">Do not enter patient-identifying information. This tool is not for protected health information.</span>
+      </div>
+      <div class="ow-pills" id="ow-pills" aria-label="Example searches"></div>
+    </div>
+  </div>
+
+  <div class="ow-shell">
+    <nav class="ow-rail" id="ow-rail" aria-label="Workspace modules"></nav>
+    <section id="ow-main" class="ow-main" tabindex="-1" role="tabpanel" aria-live="off">
+      <noscript><div class="ow-notice ow-notice-warn">The Oncotics Workspace needs JavaScript. It runs entirely in your browser and stores nothing.</div></noscript>
+    </section>
+  </div>
+
+  <footer class="ow-footer" id="ow-footer">
+    <div class="ow-footer-inner">
+      <div><strong>Educational and research use only. Not medical advice.</strong> Not regulatory, procurement, reproductive, vaccination or radiological diagnostic advice. Always verify with primary sources, current guidelines, trial sponsors, regulators, and qualified clinicians. <a href="/imaging/" target="_blank" rel="noopener noreferrer">Oncotics Imaging Workbench</a> (separate page).</div>
+      <div id="ow-footer-sources"></div>
+      <div id="ow-footer-legal">© <span data-ow-year></span> Oncotics™. All rights reserved. Oncotics™ is a trademark of Oncotics. This tool is provided for educational, research, and clinical-information-discovery purposes only. It does not provide medical, oncological, reproductive, vaccination, radiological diagnostic, regulatory, genetic counseling, or procurement advice.</div>
+    </div>
+  </footer>
+
+  <div class="ow-status" id="ow-status" role="region" aria-label="Session status"></div>
+  <div id="ow-live" class="ow-sr" aria-live="polite" aria-atomic="true"></div>
+  <div id="ow-alert" class="ow-sr" aria-live="assertive" aria-atomic="true"></div>
+  <div id="ow-layer"></div>
+</main>

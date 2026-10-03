@@ -1,0 +1,31 @@
+<!doctype html>
+<!--
+  Oncotics Imaging Workbench — a separate page from the Oncotics Precision Oncology Workspace.
+  Built for oncotics.com. Route: /imaging/ (alias /ohif → /imaging/).
+  Oncotics™ is a trademark of Oncotics. © Oncotics™. All rights reserved.
+  Educational, research and clinical-information-discovery use only. Not a radiology diagnostic
+  system, not a PACS, not a cloud image archive.
+
+  PRIVACY ENFORCEMENT
+  - No backend, proxy, database, analytics, cookies, localStorage, sessionStorage, IndexedDB,
+    Cache Storage or service workers in this page. No console logging.
+  - Images are read into browser memory only. Nothing is uploaded to Oncotics.
+  - The self-hosted OHIF Viewer (/assets/ohif/) and the optional ONNX Runtime Web runtime
+    (/assets/ort/) are loaded only after an explicit user action.
+  - connect-src allows https: because DICOMweb and inference endpoints are user-supplied;
+    requests only go where the user points them, directly from the browser.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'none'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; frame-src 'self'; worker-src 'self' blob:; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
+<title>Oncotics Imaging Workbench</title>
+<meta name="description" content="Privacy-first imaging workbench: view DICOM and images in browser memory with the OHIF Viewer or the Oncotics Inspector, measure and annotate, and optionally run experimental, non-diagnostic AI inference with a model you load. Nothing is uploaded or stored by Oncotics.">
+<link rel="canonical" href="https://oncotics.com/imaging/">
+<meta name="robots" content="index, follow">
+<style>html, body { margin: 0; padding: 0; background: #070D18; }</style>
+</head>
+<body>

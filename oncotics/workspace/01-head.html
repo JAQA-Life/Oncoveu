@@ -1,0 +1,84 @@
+<!doctype html>
+<!--
+  Oncotics Precision Oncology Workspace
+  Built for oncotics.com.
+  Oncotics™ is a trademark of Oncotics.
+  Educational and research use only. Not medical, regulatory, or procurement advice.
+  Powered by selected public APIs including CIViC, ClinicalTrials.gov,
+  openFDA drug and device endpoints, Ensembl, MyGene.info, MyVariant.info,
+  UniProt, Europe PMC, RxNorm, STRING, Reactome, AlphaFold/EBI,
+  Open Targets, cBioPortal, GWAS Catalog, ChEMBL, PubChem, and EBI OLS
+  where CORS-verified; OncoTree, NCI GDC (open access), DGIdb, Complex
+  Portal, QuickGO, PDBe, EBI Proteins, OpenAlex, Crossref and Semantic
+  Scholar on explicit request (verify mode); official link-outs otherwise.
+  The Overview globe uses a self-hosted CesiumJS build when deployed under
+  /assets/globe/ (no external CDN), else a built-in canvas renderer.
+  OHIF Viewer assets are NEVER loaded by this page (Imaging Workbench only).
+  openFDA device records may lag official FDA databases.
+  © Oncotics™. All rights reserved. (The visible footer prints the current year.)
+
+  ======================================================================
+  HOW TO EMBED ON ONCOTICS.COM
+  ======================================================================
+  The whole app lives inside <main id="oncotics-precision-workspace"> and
+  one <style> + one <script> block. All CSS is scoped under
+  .oncotics-workspace, so it will not restyle the host page.
+
+  - Static hosting (recommended): upload this file as
+    /precision-oncology-workspace/index.html (or /workspace/index.html).
+    The <meta http-equiv="Content-Security-Policy"> below then limits
+    network access to the public data providers only.
+  - WordPress: add a "Custom HTML" block and paste everything from
+    <style id="oncotics-workspace-styles"> to the closing </script>.
+    (Page-level <head> tags such as the CSP and SEO meta must be set in
+    your theme/SEO plugin instead.)
+  - Webflow: Embed element (or page-level custom code, "before </body>").
+  - Wix: "Embed HTML" (iframe). The iframe MUST allow-same-origin; a
+    sandboxed iframe without it sends "Origin: null", which CIViC rejects
+    with HTTP 422. Prefer static hosting.
+  - Squarespace: Code block (Business plan or higher).
+
+  Local preview: do NOT double-click the file (file:// sends Origin: null).
+  Serve it instead:  python3 -m http.server 8000
+  then open http://localhost:8000/oncotics-precision-workspace.html
+
+  Nothing here uses cookies, localStorage, sessionStorage, IndexedDB,
+  Cache Storage, service workers, analytics, external fonts or external
+  scripts. The only same-origin script that may load is the optional
+  self-hosted globe engine (/assets/globe/index.js).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; font-src 'none'; connect-src 'self' https://civicdb.org https://clinicaltrials.gov https://api.fda.gov https://rest.ensembl.org https://mygene.info https://myvariant.info https://rest.uniprot.org https://www.ebi.ac.uk https://rxnav.nlm.nih.gov https://string-db.org https://reactome.org https://alphafold.ebi.ac.uk https://api.platform.opentargets.org https://www.cbioportal.org https://pubchem.ncbi.nlm.nih.gov https://oncotree.mskcc.org https://api.gdc.cancer.gov https://dgidb.org https://api.openalex.org https://api.crossref.org https://api.semanticscholar.org https://www.oncokb.org https://tile.openstreetmap.org; worker-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; manifest-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Oncotics Precision Oncology Workspace | Evidence, Trials, Drugs, Devices, Vaccines, Onco-Fertility, Biology &amp; Literature</title>
+<meta name="description" content="Explore cancer genes, variants, drugs, devices, diagnostics, trials, FDA drug and device intelligence, biology, and literature through a privacy-first Oncotics workspace powered by selected live public APIs.">
+<link rel="canonical" href="https://oncotics.com/precision-oncology-workspace">
+<meta property="og:title" content="Oncotics Precision Oncology Workspace">
+<meta property="og:description" content="Live evidence, trials, drugs, devices, diagnostics, biology, and literature in one privacy-first workspace.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://oncotics.com/precision-oncology-workspace">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="index, follow">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Oncotics Precision Oncology Workspace",
+  "url": "https://oncotics.com/precision-oncology-workspace",
+  "applicationCategory": "ReferenceApplication",
+  "operatingSystem": "Any (modern web browser)",
+  "description": "Privacy-first research workspace that queries selected public oncology data providers directly from the browser. Educational and research use only; not medical, regulatory, or procurement advice.",
+  "isAccessibleForFree": true,
+  "publisher": { "@type": "Organization", "name": "Oncotics", "url": "https://oncotics.com" }
+}
+</script>
+<style>
+  /* Page-level only for the standalone file. When embedding, omit this block. */
+  html, body { margin: 0; padding: 0; background: #F8FAFC; }
+  @media (prefers-color-scheme: dark) { html, body { background: #0A1424; } }
+</style>
+</head>
+<body>

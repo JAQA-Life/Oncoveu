@@ -1,0 +1,123 @@
+<style id="oncotics-imaging-styles">
+/* Oncotics Imaging Workbench — all styles scoped under .oncotics-imaging (charcoal / blue-gray imaging palette). */
+.oncotics-imaging { --oi-bg: #070D18; --oi-surface: #0E1726; --oi-surface-2: #142034; --oi-border: #22324B; --oi-border-2: #2E4466; --oi-text: #E5ECF6; --oi-muted: #A7B5CA; --oi-subtle: #8496B0;
+  --oi-teal: #14B8A6; --oi-teal-ink: #5EEAD4; --oi-navy: #0B2545; --oi-focus: #38BDF8; --oi-good: #6EE7B7; --oi-warn: #FCD34D; --oi-bad: #FDA4AF; --oi-ai: #F0ABFC;
+  --oi-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --oi-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: block; min-height: 100vh; background: var(--oi-bg); color: var(--oi-text); font-family: var(--oi-font); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.oncotics-imaging *, .oncotics-imaging *::before, .oncotics-imaging *::after { box-sizing: border-box; }
+.oncotics-imaging h1, .oncotics-imaging h2, .oncotics-imaging h3, .oncotics-imaging p, .oncotics-imaging ul, .oncotics-imaging dl, .oncotics-imaging figure { margin: 0; }
+.oncotics-imaging a { color: var(--oi-teal-ink); }
+.oncotics-imaging :focus-visible { outline: 3px solid var(--oi-focus); outline-offset: 2px; }
+.oncotics-imaging .oi-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.oncotics-imaging .oi-skip { position: absolute; left: 12px; top: -60px; z-index: 100; background: var(--oi-teal); color: #04121F; padding: 8px 14px; border-radius: 8px; font-weight: 700; }
+.oncotics-imaging .oi-skip:focus { top: 12px; }
+.oncotics-imaging .oi-ico { width: 18px; height: 18px; flex: none; vertical-align: -3px; }
+.oncotics-imaging .oi-ext { width: 12px; height: 12px; margin-left: 3px; }
+.oncotics-imaging .oi-header { background: linear-gradient(135deg, #0B2545 0%, #111C2E 60%, #1E293B 100%); border-bottom: 1px solid var(--oi-border); padding: 18px 20px 14px; }
+.oncotics-imaging .oi-brand { display: flex; gap: 14px; align-items: center; max-width: 1600px; margin: 0 auto; }
+.oncotics-imaging .oi-logo { width: 40px; height: 40px; flex: none; }
+.oncotics-imaging .oi-brand h1 { font-size: 1.45rem; letter-spacing: -.01em; }
+.oncotics-imaging .oi-brand p { color: var(--oi-muted); font-size: .9rem; }
+.oncotics-imaging .oi-back { margin-left: auto; }
+.oncotics-imaging .oi-privacy-badge { display: flex; gap: 8px; align-items: flex-start; max-width: 1600px; margin: 12px auto 0; background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.35); color: #CCFBF1; border-radius: 10px; padding: 8px 12px; font-size: .88rem; }
+.oncotics-imaging .oi-disclaimer-bar { max-width: 1600px; margin: 8px auto 0; font-size: .8rem; color: var(--oi-muted); }
+.oncotics-imaging .oi-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); max-width: 1600px; margin: 0 auto; min-height: 70vh; }
+.oncotics-imaging .oi-nav { border-right: 1px solid var(--oi-border); padding: 12px 8px; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; }
+.oncotics-imaging .oi-nav ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.oncotics-imaging .oi-tab { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; border: 0; background: transparent; color: var(--oi-muted); font: inherit; font-size: .9rem; font-weight: 600; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
+.oncotics-imaging .oi-tab:hover { background: var(--oi-surface-2); color: var(--oi-text); }
+.oncotics-imaging .oi-tab[aria-selected="true"] { background: rgba(20,184,166,.16); color: #fff; box-shadow: inset 3px 0 0 var(--oi-teal); }
+.oncotics-imaging .oi-main { padding: 18px 20px 120px; min-width: 0; outline: none; }
+.oncotics-imaging .oi-main h2 { font-size: 1.25rem; margin-bottom: 10px; }
+.oncotics-imaging .oi-hero h2 { font-size: 1.5rem; }
+.oncotics-imaging .oi-hero > p { color: var(--oi-muted); max-width: 900px; margin: 6px 0 14px; }
+.oncotics-imaging .oi-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.oncotics-imaging .oi-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.oncotics-imaging .oi-stack { display: flex; flex-direction: column; gap: 10px; }
+.oncotics-imaging .oi-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.oncotics-imaging .oi-spacer { flex: 1; }
+.oncotics-imaging .oi-feature { display: flex; gap: 10px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 12px; padding: 12px; }
+.oncotics-imaging .oi-feature h3 { font-size: .98rem; } .oncotics-imaging .oi-feature p { color: var(--oi-muted); font-size: .86rem; }
+.oncotics-imaging .oi-feature .oi-ico { color: var(--oi-teal-ink); width: 22px; height: 22px; }
+.oncotics-imaging .oi-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.oncotics-imaging .oi-card { background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 12px; padding: 14px; min-width: 0; }
+.oncotics-imaging fieldset.oi-card { margin: 0; }
+.oncotics-imaging .oi-card-title { font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.oncotics-imaging .oi-card-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.oncotics-imaging .oi-btn { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--oi-border-2); background: var(--oi-surface-2); color: var(--oi-text); font: inherit; font-weight: 600; font-size: .9rem; padding: 8px 12px; border-radius: 9px; cursor: pointer; text-decoration: none; min-height: 38px; }
+.oncotics-imaging .oi-btn:hover { border-color: var(--oi-teal); }
+.oncotics-imaging .oi-btn[disabled] { opacity: .5; cursor: not-allowed; }
+.oncotics-imaging .oi-btn-sm { font-size: .82rem; padding: 6px 10px; min-height: 32px; }
+.oncotics-imaging .oi-btn-primary { background: var(--oi-teal); border-color: var(--oi-teal); color: #04121F; }
+.oncotics-imaging .oi-btn-danger { border-color: rgba(253,164,175,.5); color: var(--oi-bad); }
+.oncotics-imaging .oi-btn-ghost { background: transparent; }
+.oncotics-imaging .oi-btn-icon { padding: 6px; min-height: 32px; }
+.oncotics-imaging .oi-linkbtn { background: none; border: 0; color: var(--oi-teal-ink); font: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+.oncotics-imaging .oi-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: .74rem; font-weight: 700; border: 1px solid transparent; background: rgba(148,163,184,.16); color: var(--oi-muted); }
+.oncotics-imaging .oi-b-ai { background: rgba(240,171,252,.15); color: var(--oi-ai); border-style: dashed; border-color: currentColor; }
+.oncotics-imaging .oi-b-warn { background: rgba(252,211,77,.14); color: var(--oi-warn); } .oncotics-imaging .oi-b-bad { background: rgba(253,164,175,.15); color: var(--oi-bad); }
+.oncotics-imaging .oi-b-teal { background: rgba(20,184,166,.16); color: var(--oi-teal-ink); } .oncotics-imaging .oi-b-outline { background: transparent; border-color: var(--oi-border-2); }
+.oncotics-imaging .oi-notice { display: flex; gap: 10px; align-items: flex-start; border-radius: 10px; padding: 10px 12px; font-size: .9rem; border: 1px solid; }
+.oncotics-imaging .oi-notice-info { background: rgba(56,189,248,.08); border-color: rgba(56,189,248,.3); }
+.oncotics-imaging .oi-notice-warn { background: rgba(252,211,77,.08); border-color: rgba(252,211,77,.35); }
+.oncotics-imaging .oi-notice-bad { background: rgba(253,164,175,.08); border-color: rgba(253,164,175,.4); }
+.oncotics-imaging .oi-notice-good { background: rgba(20,184,166,.1); border-color: rgba(20,184,166,.4); }
+.oncotics-imaging .oi-notice .oi-ico { margin-top: 2px; }
+.oncotics-imaging .oi-banner { display: flex; gap: 8px; align-items: center; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; font-weight: 600; font-size: .88rem; }
+.oncotics-imaging .oi-banner-bad { background: rgba(225,29,72,.18); border: 1px solid rgba(253,164,175,.5); color: #FFE4E6; }
+.oncotics-imaging .oi-subtle { color: var(--oi-subtle); font-size: .84rem; } .oncotics-imaging .oi-small { font-size: .86rem; }
+.oncotics-imaging .oi-list { padding-left: 18px; }
+.oncotics-imaging .oi-check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: .9rem; margin: 4px 0; }
+.oncotics-imaging .oi-check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--oi-teal); }
+.oncotics-imaging .oi-form { display: flex; flex-direction: column; gap: 10px; }
+.oncotics-imaging .oi-field { display: flex; flex-direction: column; gap: 4px; font-size: .86rem; color: var(--oi-muted); }
+.oncotics-imaging .oi-input, .oncotics-imaging .oi-select { background: #08111F; border: 1px solid var(--oi-border-2); color: var(--oi-text); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: .9rem; min-height: 38px; width: 100%; }
+.oncotics-imaging .oi-note { min-width: 160px; }
+.oncotics-imaging .oi-drop { display: block; border: 1.5px dashed var(--oi-border-2); border-radius: 12px; padding: 14px; margin-top: 8px; cursor: pointer; text-align: center; color: var(--oi-muted); }
+.oncotics-imaging .oi-drop:hover, .oncotics-imaging .oi-drop:focus-within { border-color: var(--oi-teal); color: var(--oi-text); }
+.oncotics-imaging .oi-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.oncotics-imaging .oi-drop span { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
+.oncotics-imaging .oi-table-wrap { overflow-x: auto; }
+.oncotics-imaging .oi-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.oncotics-imaging .oi-table caption { text-align: left; color: var(--oi-subtle); padding: 4px 0; }
+.oncotics-imaging .oi-table th, .oncotics-imaging .oi-table td { border-bottom: 1px solid var(--oi-border); padding: 7px 8px; text-align: left; vertical-align: top; }
+.oncotics-imaging .oi-table th { color: var(--oi-muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
+.oncotics-imaging .oi-table tr.oi-sel td { background: rgba(253,224,71,.08); }
+.oncotics-imaging .oi-kv { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 4px 12px; font-size: .86rem; margin-top: 6px; }
+.oncotics-imaging .oi-kv dt { color: var(--oi-subtle); } .oncotics-imaging .oi-kv dd { margin: 0; word-break: break-word; }
+.oncotics-imaging .oi-phi { border: 1px dashed var(--oi-bad); padding: 8px; border-radius: 8px; }
+.oncotics-imaging .oi-details { margin-top: 10px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 10px; padding: 8px 12px; }
+.oncotics-imaging .oi-details summary { cursor: pointer; font-weight: 600; }
+.oncotics-imaging .oi-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 10px; margin-bottom: 8px; }
+.oncotics-imaging .oi-tool { border: 1px solid transparent; background: transparent; color: var(--oi-muted); font: inherit; font-size: .84rem; font-weight: 600; padding: 6px 10px; border-radius: 7px; cursor: pointer; min-height: 34px; }
+.oncotics-imaging .oi-tool:hover { background: var(--oi-surface-2); color: var(--oi-text); }
+.oncotics-imaging .oi-tool[aria-pressed="true"] { background: rgba(20,184,166,.2); color: #fff; border-color: rgba(20,184,166,.6); }
+.oncotics-imaging .oi-viewer-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--oi-border); background: #05080F; }
+.oncotics-imaging .oi-viewer-mount, .oncotics-imaging .oi-stage { position: relative; width: 100%; height: min(68vh, 640px); }
+.oncotics-imaging .oi-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.oncotics-imaging .oi-ohif-mount { margin-top: 10px; border: 1px solid var(--oi-border); border-radius: 12px; overflow: hidden; height: min(78vh, 820px); background: #000; }
+.oncotics-imaging .oi-ohif-frame { width: 100%; height: 100%; border: 0; display: block; }
+.oncotics-imaging .oi-series { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; padding: 8px 10px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 10px; }
+.oncotics-imaging .oi-compare { display: flex; flex-wrap: wrap; gap: 10px; }
+.oncotics-imaging .oi-compare figure { background: #05080F; border: 1px solid var(--oi-border); border-radius: 8px; padding: 6px; }
+.oncotics-imaging .oi-compare figcaption { font-size: .76rem; color: var(--oi-subtle); margin-top: 4px; }
+.oncotics-imaging .oi-modelcard { border-color: rgba(240,171,252,.35); }
+.oncotics-imaging .oi-code { background: #050B15; border: 1px solid var(--oi-border); border-radius: 8px; padding: 10px; overflow: auto; font-family: var(--oi-mono); font-size: .78rem; max-height: 360px; }
+.oncotics-imaging .oi-empty { text-align: center; padding: 34px 14px; border: 1px dashed var(--oi-border-2); border-radius: 12px; color: var(--oi-muted); margin-top: 10px; }
+.oncotics-imaging .oi-flow { margin: 12px 0; color: var(--oi-text); max-width: 680px; }
+.oncotics-imaging .oi-status { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 20px; background: rgba(7,13,24,.95); border-top: 1px solid var(--oi-border); font-size: .84rem; color: var(--oi-muted); z-index: 30; }
+.oncotics-imaging .oi-footer { padding: 16px 20px 70px; color: var(--oi-subtle); font-size: .8rem; text-align: center; border-top: 1px solid var(--oi-border); }
+.oncotics-imaging .oi-overlay { position: fixed; inset: 0; background: rgba(2,6,14,.7); z-index: 80; }
+.oncotics-imaging .oi-modal { position: fixed; z-index: 90; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--oi-surface); border: 1px solid var(--oi-border-2); border-radius: 14px; box-shadow: 0 30px 70px rgba(0,0,0,.6); }
+.oncotics-imaging .oi-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--oi-border); }
+.oncotics-imaging .oi-modal-head h2 { font-size: 1.1rem; }
+.oncotics-imaging .oi-modal-body { padding: 14px 16px; overflow-y: auto; }
+.oncotics-imaging .oi-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--oi-border); }
+.oncotics-imaging .oi-toast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); background: #0B2545; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 95; font-size: .9rem; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100vw - 32px); }
+.oncotics-imaging .oi-spinner { width: 16px; height: 16px; border: 2px solid var(--oi-border-2); border-top-color: var(--oi-teal); border-radius: 50%; display: inline-block; animation: oi-spin .8s linear infinite; }
+@keyframes oi-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .oncotics-imaging .oi-spinner { animation: none; } }
+@media (max-width: 960px) { .oncotics-imaging .oi-shell { grid-template-columns: 1fr; } .oncotics-imaging .oi-nav { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--oi-border); overflow-x: auto; } .oncotics-imaging .oi-nav ul { flex-direction: row; width: max-content; } .oncotics-imaging .oi-tab span { white-space: nowrap; } .oncotics-imaging .oi-grid-2, .oncotics-imaging .oi-grid-3 { grid-template-columns: 1fr; } .oncotics-imaging .oi-main { padding: 14px 12px 120px; } .oncotics-imaging .oi-brand { flex-wrap: wrap; } }
+@media (prefers-color-scheme: light) { .oncotics-imaging[data-theme="light"] { --oi-bg: #F8FAFC; } }
+@media print { .oncotics-imaging .oi-nav, .oncotics-imaging .oi-status, .oncotics-imaging .oi-toolbar, .oncotics-imaging .oi-ohif-mount { display: none; } .oncotics-imaging { background: #fff; color: #000; } }
+</style>
