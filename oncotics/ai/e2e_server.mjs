@@ -9,8 +9,9 @@ const [root, port] = process.argv.slice(2);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.onnx': 'application/octet-stream' };
 http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
-  let p = path.join(root, decodeURIComponent(u.pathname));
-  if (!p.startsWith(path.resolve(root))) { res.writeHead(403); res.end(); return; }
+  const base = path.resolve(root);
+  let p = path.resolve(base, '.' + decodeURIComponent(u.pathname));
+  if (p !== base && !p.startsWith(base + path.sep)) { res.writeHead(403); res.end(); return; }
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
   if (!fs.existsSync(p)) { res.writeHead(404); res.end('not found'); return; }
   const h = { 'Content-Type': types[path.extname(p)] || 'application/octet-stream', 'Cross-Origin-Opener-Policy': 'same-origin' };

@@ -16,7 +16,8 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, by
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 const W = ms => page.waitForTimeout(ms);
 const fail = msg => { console.error('E2E FAILED: ' + msg); process.exit(1); };
-await page.goto(base + '/imaging/index.html');
+const resp = await page.goto(base + '/imaging/index.html');
+if (!resp || !resp.ok()) fail('Workbench page did not load (HTTP ' + (resp && resp.status()) + ')');
 await page.click('[data-panel="consent"] >> nth=0'); await W(200);
 await page.check('#oi-c-phi'); await page.check('#oi-c-nd'); await page.click('[data-act="consent-inline"]'); await W(200);
 await page.click('[data-panel="upload"] >> nth=0'); await W(200);
