@@ -83,9 +83,9 @@ var Inspector = (function () {
     var w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
-    var g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#05080F'; g.fillRect(0, 0, w, h);
+    var g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = (VIEWER_BG[DISPLAY.viewerBg] || VIEWER_BG.black)[1]; g.fillRect(0, 0, w, h);
     var img = curImg();
-    if (!img) { g.fillStyle = '#94A3B8'; g.font = '14px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('No image loaded. Use Upload Image or Connect Source (after consent).', w / 2, h / 2); return; }
+    if (!img) { g.fillStyle = viewerBgIsLight() ? '#334155' : '#94A3B8'; g.font = '14px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('No image loaded. Use Upload Image or Connect Source (after consent).', w / 2, h / 2); return; }
     var t = T(img); g.imageSmoothingEnabled = view.zoom < 3; g.drawImage(display(img), t.ox, t.oy, img.w * t.s, img.h * t.s);
     // Layer 2: AI suggestions (separate memory-only layer)
     if (S.layers.ai) {
@@ -118,7 +118,7 @@ var Inspector = (function () {
     }
     // Key-image marker
     if (S.keyImages.some(function (k) { return k.imageId === img.id && k.frame === S.frame; })) { g.fillStyle = '#FDE047'; g.font = '700 12px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('★ Key image', w - 10, 18); g.textAlign = 'left'; }
-    g.fillStyle = 'rgba(203,213,225,.9)'; g.font = '11px system-ui,sans-serif';
+    g.fillStyle = viewerBgIsLight() ? 'rgba(15,23,42,.9)' : 'rgba(203,213,225,.9)'; g.font = '11px system-ui,sans-serif';
     g.fillText(imgLabel(img) + (img.kind === 'gray' ? ' · W ' + num(img.wl.w, 0) + ' / L ' + num(img.wl.c, 0) : '') + ' · ' + Math.round(view.zoom * 100) + '%', 10, h - 10);
     if (!img.isDicom) { g.fillStyle = '#FCD34D'; g.fillText(TEXT.nonDicom, 10, 18); }
     if (hover && S.tool !== 'pan' && S.tool !== 'wl') { g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([]); g.beginPath(); g.moveTo(hover.x - 8, hover.y); g.lineTo(hover.x + 8, hover.y); g.moveTo(hover.x, hover.y - 8); g.lineTo(hover.x, hover.y + 8); g.stroke(); }
@@ -130,6 +130,7 @@ var Inspector = (function () {
     if (S.tool === 'pan') { drag = { kind: 'pan', x: e.clientX, y: e.clientY, px: view.px, py: view.py }; return; }
     if (S.tool === 'wl') { drag = { kind: 'wl', x: e.clientX, y: e.clientY, c: img.wl.c, w: img.wl.w }; return; }
     if (p.x < 0 || p.y < 0 || p.x > img.w || p.y > img.h) return;
+    if (S.tool === 'aiclick') { aiClickAt(p); return; }   // AI click-to-segment (explicit user action)
     if (S.tool === 'angle' || S.tool === 'polygon') {
       if (!S.pending || S.pending.type !== S.tool) S.pending = newAnn(S.tool, p, img);
       else {

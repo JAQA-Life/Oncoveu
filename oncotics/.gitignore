@@ -7,6 +7,7 @@ site/src/oncotics-imaging-workbench.html
 public_html/assets/ohif/
 public_html/assets/globe/
 public_html/assets/ort/
+public_html/assets/models/
 __pycache__/
 oncotics-hostinger-upload.zip
 upload-parts/

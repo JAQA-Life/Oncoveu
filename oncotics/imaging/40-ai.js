@@ -153,14 +153,14 @@ async function runInference() {
   if (S.ai.mode === 'remote' && (!S.ai.remote.enabled || !S.consent.remote)) { openConsent('remote'); return; }
   S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running experimental inference…');
   try {
-    var out = S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
-    var n = 0; out.forEach(function (r) { r.id = 'S' + (++n + S.ai.results.length); });
+    var out = S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
+    out.forEach(function (r) { r.id = nextAiId(); });
     S.ai.results = S.ai.results.filter(function (r) { return r.imageId !== S.current || r.accepted; }).concat(out);
-    S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'local' ? 'local-browser' : 'user-endpoint' };
+    S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'remote' ? 'user-endpoint' : 'local-browser' };
     announce('Inference finished: ' + out.length + ' AI suggestions (experimental, not a diagnosis).');
   } catch (e) {
     var k = e && e.message;
-    S.ai.error = k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
+    S.ai.error = k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
   } finally { S.ai.running = false; scheduleRender(); }
 }
 function scoreLabel(s) { return s == null ? 'not reported' : s >= 0.9 ? 'Very high' : s >= 0.75 ? 'High' : s >= 0.5 ? 'Medium' : 'Low'; }

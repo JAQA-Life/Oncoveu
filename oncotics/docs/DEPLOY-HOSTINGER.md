@@ -32,12 +32,21 @@ git checkout claude/oncotics-precision-workspace-uuswkw    # or main, once merge
 oncotics/scripts/build-site.sh            # pages, Workspace, Imaging Workbench -> oncotics/public_html
 oncotics/scripts/fetch-vendor-assets.sh   # self-hosted 3D globe + local AI runtime (~34 MB, from npm)
 oncotics/scripts/build-ohif.sh            # self-hosted OHIF Viewer at /assets/ohif/ (~125 MB; 10–20 min)
+oncotics/scripts/fetch-ai-models.sh       # self-hosted SAM ViT-B AI model at /assets/models/sam-b/ (~200 MB)
 ```
+
+If you upload with File Manager instead, you can add the AI model by hand:
+1. Download the two files.
+   - Encoder (~180 MB): https://huggingface.co/schmuell/sam-b-fp16/resolve/main/sam_vit_b_01ec64.encoder-fp16.onnx
+   - Decoder (~17 MB): https://huggingface.co/schmuell/sam-b-fp16/resolve/main/sam_vit_b_01ec64.decoder.onnx
+2. Rename them to `encoder.onnx` and `decoder.onnx`.
+3. Upload both to `public_html/assets/models/sam-b/`. FTP is easier than the browser for a 180 MB file.
 
 The last two steps are optional. Without them the site still works:
 - The globe uses its built-in renderer.
 - Local AI inference reports that the runtime is not deployed.
 - "Open OHIF" reports that the viewer is not deployed.
+- "AI detection & segmentation (SAM)" reports that the model is not deployed. The built-in automatic detection still works.
 
 Nothing falls back to an external CDN.
 

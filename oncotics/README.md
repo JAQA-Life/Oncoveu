@@ -12,6 +12,7 @@ sources.
 | `/assets/ohif/` | Self-hosted OHIF Viewer, embedded by the Workbench on request | this repository + `platform/app/public/config/oncotics.js` |
 | `/assets/globe/` | Self-hosted CesiumJS for the Overview globe (optional; built-in renderer otherwise) | `scripts/fetch-vendor-assets.sh` |
 | `/assets/ort/` | Self-hosted ONNX Runtime Web for local Workbench inference (optional) | `scripts/fetch-vendor-assets.sh` |
+| `/assets/models/sam-b/` | Self-hosted SAM ViT-B AI model for Workbench AI detection & segmentation (optional) | `scripts/fetch-ai-models.sh` |
 
 ## Build
 
@@ -19,6 +20,7 @@ sources.
 oncotics/scripts/build-site.sh            # workspace + imaging + static site -> oncotics/public_html
 oncotics/scripts/fetch-vendor-assets.sh   # optional: CesiumJS 1.146.0 + ONNX Runtime Web 1.20.1 (npm registry)
 oncotics/scripts/build-ohif.sh            # optional: OHIF Viewer -> public_html/assets/ohif (needs ~8 GB RAM)
+oncotics/scripts/fetch-ai-models.sh       # optional: SAM ViT-B AI model -> public_html/assets/models/sam-b (~200 MB)
 oncotics/scripts/package-hostinger.sh     # zip public_html for hPanel upload
 ```
 

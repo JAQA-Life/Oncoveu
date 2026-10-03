@@ -63,6 +63,8 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 /* Oncotics Imaging Workbench — all styles scoped under .oncotics-imaging (charcoal / blue-gray imaging palette). */
 .oncotics-imaging { --oi-bg: #070D18; --oi-surface: #0E1726; --oi-surface-2: #142034; --oi-border: #22324B; --oi-border-2: #2E4466; --oi-text: #E5ECF6; --oi-muted: #A7B5CA; --oi-subtle: #8496B0;
   --oi-teal: #14B8A6; --oi-teal-ink: #5EEAD4; --oi-navy: #0B2545; --oi-focus: #38BDF8; --oi-good: #6EE7B7; --oi-warn: #FCD34D; --oi-bad: #FDA4AF; --oi-ai: #F0ABFC;
+  --oi-input-bg: #08111F; --oi-status-bg: rgba(7,13,24,.95); --oi-strong: #FFFFFF; --oi-privacy-ink: #CCFBF1; --oi-banner-ink: #FFE4E6; --oi-viewer-bg: #05080F;
+  --oi-header-bg: linear-gradient(135deg, #0B2545 0%, #111C2E 60%, #1E293B 100%); color-scheme: dark;
   --oi-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --oi-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   display: block; min-height: 100vh; background: var(--oi-bg); color: var(--oi-text); font-family: var(--oi-font); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 .oncotics-imaging *, .oncotics-imaging *::before, .oncotics-imaging *::after { box-sizing: border-box; }
@@ -74,20 +76,20 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 .oncotics-imaging .oi-skip:focus { top: 12px; }
 .oncotics-imaging .oi-ico { width: 18px; height: 18px; flex: none; vertical-align: -3px; }
 .oncotics-imaging .oi-ext { width: 12px; height: 12px; margin-left: 3px; }
-.oncotics-imaging .oi-header { background: linear-gradient(135deg, #0B2545 0%, #111C2E 60%, #1E293B 100%); border-bottom: 1px solid var(--oi-border); padding: 18px 20px 14px; }
+.oncotics-imaging .oi-header { background: var(--oi-header-bg); border-bottom: 1px solid var(--oi-border); padding: 18px 20px 14px; }
 .oncotics-imaging .oi-brand { display: flex; gap: 14px; align-items: center; max-width: 1600px; margin: 0 auto; }
 .oncotics-imaging .oi-logo { width: 40px; height: 40px; flex: none; }
 .oncotics-imaging .oi-brand h1 { font-size: 1.45rem; letter-spacing: -.01em; }
 .oncotics-imaging .oi-brand p { color: var(--oi-muted); font-size: .9rem; }
 .oncotics-imaging .oi-back { margin-left: auto; }
-.oncotics-imaging .oi-privacy-badge { display: flex; gap: 8px; align-items: flex-start; max-width: 1600px; margin: 12px auto 0; background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.35); color: #CCFBF1; border-radius: 10px; padding: 8px 12px; font-size: .88rem; }
+.oncotics-imaging .oi-privacy-badge { display: flex; gap: 8px; align-items: flex-start; max-width: 1600px; margin: 12px auto 0; background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.35); color: var(--oi-privacy-ink); border-radius: 10px; padding: 8px 12px; font-size: .88rem; }
 .oncotics-imaging .oi-disclaimer-bar { max-width: 1600px; margin: 8px auto 0; font-size: .8rem; color: var(--oi-muted); }
 .oncotics-imaging .oi-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); max-width: 1600px; margin: 0 auto; min-height: 70vh; }
 .oncotics-imaging .oi-nav { border-right: 1px solid var(--oi-border); padding: 12px 8px; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; }
 .oncotics-imaging .oi-nav ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .oncotics-imaging .oi-tab { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; border: 0; background: transparent; color: var(--oi-muted); font: inherit; font-size: .9rem; font-weight: 600; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
 .oncotics-imaging .oi-tab:hover { background: var(--oi-surface-2); color: var(--oi-text); }
-.oncotics-imaging .oi-tab[aria-selected="true"] { background: rgba(20,184,166,.16); color: #fff; box-shadow: inset 3px 0 0 var(--oi-teal); }
+.oncotics-imaging .oi-tab[aria-selected="true"] { background: rgba(20,184,166,.16); color: var(--oi-strong); box-shadow: inset 3px 0 0 var(--oi-teal); }
 .oncotics-imaging .oi-main { padding: 18px 20px 120px; min-width: 0; outline: none; }
 .oncotics-imaging .oi-main h2 { font-size: 1.25rem; margin-bottom: 10px; }
 .oncotics-imaging .oi-hero h2 { font-size: 1.5rem; }
@@ -125,14 +127,14 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 .oncotics-imaging .oi-notice-good { background: rgba(20,184,166,.1); border-color: rgba(20,184,166,.4); }
 .oncotics-imaging .oi-notice .oi-ico { margin-top: 2px; }
 .oncotics-imaging .oi-banner { display: flex; gap: 8px; align-items: center; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; font-weight: 600; font-size: .88rem; }
-.oncotics-imaging .oi-banner-bad { background: rgba(225,29,72,.18); border: 1px solid rgba(253,164,175,.5); color: #FFE4E6; }
+.oncotics-imaging .oi-banner-bad { background: rgba(225,29,72,.18); border: 1px solid rgba(253,164,175,.5); color: var(--oi-banner-ink); }
 .oncotics-imaging .oi-subtle { color: var(--oi-subtle); font-size: .84rem; } .oncotics-imaging .oi-small { font-size: .86rem; }
 .oncotics-imaging .oi-list { padding-left: 18px; }
 .oncotics-imaging .oi-check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: .9rem; margin: 4px 0; }
 .oncotics-imaging .oi-check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--oi-teal); }
 .oncotics-imaging .oi-form { display: flex; flex-direction: column; gap: 10px; }
 .oncotics-imaging .oi-field { display: flex; flex-direction: column; gap: 4px; font-size: .86rem; color: var(--oi-muted); }
-.oncotics-imaging .oi-input, .oncotics-imaging .oi-select { background: #08111F; border: 1px solid var(--oi-border-2); color: var(--oi-text); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: .9rem; min-height: 38px; width: 100%; }
+.oncotics-imaging .oi-input, .oncotics-imaging .oi-select { background: var(--oi-input-bg); border: 1px solid var(--oi-border-2); color: var(--oi-text); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: .9rem; min-height: 38px; width: 100%; }
 .oncotics-imaging .oi-note { min-width: 160px; }
 .oncotics-imaging .oi-drop { display: block; border: 1.5px dashed var(--oi-border-2); border-radius: 12px; padding: 14px; margin-top: 8px; cursor: pointer; text-align: center; color: var(--oi-muted); }
 .oncotics-imaging .oi-drop:hover, .oncotics-imaging .oi-drop:focus-within { border-color: var(--oi-teal); color: var(--oi-text); }
@@ -152,7 +154,7 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 .oncotics-imaging .oi-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 10px; margin-bottom: 8px; }
 .oncotics-imaging .oi-tool { border: 1px solid transparent; background: transparent; color: var(--oi-muted); font: inherit; font-size: .84rem; font-weight: 600; padding: 6px 10px; border-radius: 7px; cursor: pointer; min-height: 34px; }
 .oncotics-imaging .oi-tool:hover { background: var(--oi-surface-2); color: var(--oi-text); }
-.oncotics-imaging .oi-tool[aria-pressed="true"] { background: rgba(20,184,166,.2); color: #fff; border-color: rgba(20,184,166,.6); }
+.oncotics-imaging .oi-tool[aria-pressed="true"] { background: rgba(20,184,166,.2); color: var(--oi-strong); border-color: rgba(20,184,166,.6); }
 .oncotics-imaging .oi-viewer-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--oi-border); background: #05080F; }
 .oncotics-imaging .oi-viewer-mount, .oncotics-imaging .oi-stage { position: relative; width: 100%; height: min(68vh, 640px); }
 .oncotics-imaging .oi-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
@@ -160,13 +162,13 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 .oncotics-imaging .oi-ohif-frame { width: 100%; height: 100%; border: 0; display: block; }
 .oncotics-imaging .oi-series { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; padding: 8px 10px; background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: 10px; }
 .oncotics-imaging .oi-compare { display: flex; flex-wrap: wrap; gap: 10px; }
-.oncotics-imaging .oi-compare figure { background: #05080F; border: 1px solid var(--oi-border); border-radius: 8px; padding: 6px; }
+.oncotics-imaging .oi-compare figure { background: var(--oi-viewer-bg); border: 1px solid var(--oi-border); border-radius: 8px; padding: 6px; }
 .oncotics-imaging .oi-compare figcaption { font-size: .76rem; color: var(--oi-subtle); margin-top: 4px; }
 .oncotics-imaging .oi-modelcard { border-color: rgba(240,171,252,.35); }
 .oncotics-imaging .oi-code { background: #050B15; border: 1px solid var(--oi-border); border-radius: 8px; padding: 10px; overflow: auto; font-family: var(--oi-mono); font-size: .78rem; max-height: 360px; }
 .oncotics-imaging .oi-empty { text-align: center; padding: 34px 14px; border: 1px dashed var(--oi-border-2); border-radius: 12px; color: var(--oi-muted); margin-top: 10px; }
 .oncotics-imaging .oi-flow { margin: 12px 0; color: var(--oi-text); max-width: 680px; }
-.oncotics-imaging .oi-status { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 20px; background: rgba(7,13,24,.95); border-top: 1px solid var(--oi-border); font-size: .84rem; color: var(--oi-muted); z-index: 30; }
+.oncotics-imaging .oi-status { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 20px; background: var(--oi-status-bg); border-top: 1px solid var(--oi-border); font-size: .84rem; color: var(--oi-muted); z-index: 30; }
 .oncotics-imaging .oi-footer { padding: 16px 20px 70px; color: var(--oi-subtle); font-size: .8rem; text-align: center; border-top: 1px solid var(--oi-border); }
 .oncotics-imaging .oi-overlay { position: fixed; inset: 0; background: rgba(2,6,14,.7); z-index: 80; }
 .oncotics-imaging .oi-modal { position: fixed; z-index: 90; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--oi-surface); border: 1px solid var(--oi-border-2); border-radius: 14px; box-shadow: 0 30px 70px rgba(0,0,0,.6); }
@@ -179,15 +181,28 @@ main.oncotics-imaging .oi-skip:not(:focus){top:-160px}
 @keyframes oi-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .oncotics-imaging .oi-spinner { animation: none; } }
 @media (max-width: 960px) { .oncotics-imaging .oi-shell { grid-template-columns: 1fr; } .oncotics-imaging .oi-nav { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--oi-border); overflow-x: auto; } .oncotics-imaging .oi-nav ul { flex-direction: row; width: max-content; } .oncotics-imaging .oi-tab span { white-space: nowrap; } .oncotics-imaging .oi-grid-2, .oncotics-imaging .oi-grid-3 { grid-template-columns: 1fr; } .oncotics-imaging .oi-main { padding: 14px 12px 120px; } .oncotics-imaging .oi-brand { flex-wrap: wrap; } }
-@media (prefers-color-scheme: light) { .oncotics-imaging[data-theme="light"] { --oi-bg: #F8FAFC; } }
 @media print { .oncotics-imaging .oi-nav, .oncotics-imaging .oi-status, .oncotics-imaging .oi-toolbar, .oncotics-imaging .oi-ohif-mount { display: none; } .oncotics-imaging { background: #fff; color: #000; } }
+
+/* Themes: dark (default variables above), light, and system (follows the device). Memory only. */
+.oncotics-imaging[data-theme="light"] { --oi-bg: #F3F6FA; --oi-surface: #FFFFFF; --oi-surface-2: #EDF2F8; --oi-border: #D3DCE8; --oi-border-2: #B4C2D4; --oi-text: #0F1B2D; --oi-muted: #3B4C63; --oi-subtle: #56667D; --oi-teal: #0D9488; --oi-teal-ink: #0F766E; --oi-focus: #0369A1; --oi-good: #047857; --oi-warn: #8A4B00; --oi-bad: #B4123B; --oi-ai: #A21CAF; --oi-input-bg: #FFFFFF; --oi-status-bg: rgba(255,255,255,.97); --oi-strong: #0B1626; --oi-privacy-ink: #134E4A; --oi-banner-ink: #881337; --oi-header-bg: linear-gradient(135deg, #E3F2EF 0%, #EAF1F9 60%, #F6F8FB 100%); color-scheme: light; }
+@media (prefers-color-scheme: light) { .oncotics-imaging:not([data-theme="dark"]) { --oi-bg: #F3F6FA; --oi-surface: #FFFFFF; --oi-surface-2: #EDF2F8; --oi-border: #D3DCE8; --oi-border-2: #B4C2D4; --oi-text: #0F1B2D; --oi-muted: #3B4C63; --oi-subtle: #56667D; --oi-teal: #0D9488; --oi-teal-ink: #0F766E; --oi-focus: #0369A1; --oi-good: #047857; --oi-warn: #8A4B00; --oi-bad: #B4123B; --oi-ai: #A21CAF; --oi-input-bg: #FFFFFF; --oi-status-bg: rgba(255,255,255,.97); --oi-strong: #0B1626; --oi-privacy-ink: #134E4A; --oi-banner-ink: #881337; --oi-header-bg: linear-gradient(135deg, #E3F2EF 0%, #EAF1F9 60%, #F6F8FB 100%); color-scheme: light; } }
+.oncotics-imaging .oi-logo { color: var(--oi-text); }
+.oncotics-imaging .oi-brand { flex-wrap: wrap; }
+.oncotics-imaging .oi-display { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-left: auto; }
+.oncotics-imaging .oi-seg { display: inline-flex; align-items: center; gap: 4px; font-size: .82rem; color: var(--oi-muted); }
+.oncotics-imaging .oi-seg-l { margin-right: 4px; font-weight: 600; }
+.oncotics-imaging .oi-seg-b { border: 1px solid var(--oi-border-2); background: var(--oi-surface); color: var(--oi-text); font: inherit; font-size: .8rem; font-weight: 600; padding: 4px 10px; min-height: 30px; cursor: pointer; }
+.oncotics-imaging .oi-seg-b:first-of-type { border-radius: 8px 0 0 8px; } .oncotics-imaging .oi-seg-b:last-of-type { border-radius: 0 8px 8px 0; }
+.oncotics-imaging .oi-seg-b[aria-pressed="true"] { background: rgba(20,184,166,.22); border-color: var(--oi-teal); color: var(--oi-strong); }
+.oncotics-imaging .oi-select-sm { min-height: 30px; padding: 4px 8px; font-size: .8rem; width: auto; }
 </style>
 <main id="oncotics-imaging-workbench" class="oncotics-imaging" aria-label="Oncotics Imaging Workbench">
   <a class="oi-skip" href="#oi-main">Skip to imaging content</a>
   <header class="oi-header">
     <div class="oi-brand">
-      <svg class="oi-logo" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#14B8A6" stroke-width="2.5"/><path d="M10 9c6 3 6 11 12 14M22 9c-6 3-6 11-12 14" fill="none" stroke="#E7F0FA" stroke-width="2.2" stroke-linecap="round"/><path d="M12 13h8M12 19h8" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="oi-logo" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#14B8A6" stroke-width="2.5"/><path d="M10 9c6 3 6 11 12 14M22 9c-6 3-6 11-12 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 13h8M12 19h8" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/></svg>
       <div><h1>Oncotics Imaging Workbench</h1><p>Memory-only image viewing, lesion inspection, annotation and opt-in experimental AI inference. Powered by the OHIF Viewer.</p></div>
+      <div id="oi-display" class="oi-display" role="group" aria-label="Display settings"></div>
       <a class="oi-btn oi-btn-sm oi-back" href="/precision-oncology-workspace/">Oncotics workspace</a>
     </div>
     <p class="oi-privacy-badge"><svg class="oi-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span><strong>Imaging Privacy:</strong> Uploaded images and inference results are kept only in your browser memory. Oncotics does not store, upload, log, or train on your images.</span></p>
@@ -298,6 +313,8 @@ var REGISTRY = {
     { id: 'local_dicom', name: 'Local DICOM files', mode: 'memory-only', note: 'Parsed in browser memory; uncompressed and baseline-JPEG transfer syntaxes in the Inspector; other syntaxes in OHIF.' },
     { id: 'local_raster', name: 'Local PNG / JPEG / WebP / BMP / TIFF*', mode: 'memory-only', note: 'Decoded by the browser; file metadata (EXIF/GPS) is never read and is dropped from exports. *TIFF only where the browser decodes it.' },
     { id: 'local_model', name: 'Local ONNX model (user-loaded)', mode: 'ai-derived-optional', note: 'Runs in a WebAssembly runtime self-hosted at /assets/ort/. No network request for inference.' },
+    { id: 'builtin_detector', name: 'Built-in candidate detector (page code)', mode: 'in-browser, user-triggered', note: 'Rule-based computer vision; no download and no network request.' },
+    { id: 'sam_vit_b', name: 'Segment Anything Model (SAM) ViT-B, Meta AI (Apache-2.0)', mode: 'self-hosted on this site, user-triggered', note: 'Model files served from /assets/models/sam-b/ when deployed; runs in this browser (WebGPU or WebAssembly). Images never leave the browser.' },
     { id: 'user_inference', name: 'User-supplied inference endpoint', mode: 'ai-derived-optional', note: 'Disabled by default; separate consent; direct browser → endpoint; provider may log/store.' },
     { id: 'tcia', name: 'The Cancer Imaging Archive (TCIA)', mode: 'linkout', url: 'https://www.cancerimagingarchive.net/browse-collections/' },
     { id: 'nci_idc', name: 'NCI Imaging Data Commons', mode: 'linkout', url: 'https://portal.imaging.datacommons.cancer.gov/explore/' },
@@ -390,6 +407,10 @@ function freshState() {
   };
 }
 var S = freshState();
+// Display preferences (memory only; not image data, so Clear Session keeps them).
+var DISPLAY = { theme: 'system', viewerBg: 'black' };
+var VIEWER_BG = { black: ['Black', '#05080F'], dark: ['Dark gray', '#1F2937'], gray: ['Mid gray', '#64748B'], light: ['Light gray', '#E2E8F0'], white: ['White', '#FFFFFF'] };
+function viewerBgIsLight() { return DISPLAY.viewerBg === 'light' || DISPLAY.viewerBg === 'white'; }
 
 /* ====================================================================
    DICOM: minimal Part-10 parser (memory only)
@@ -648,9 +669,9 @@ var Inspector = (function () {
     var w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
-    var g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#05080F'; g.fillRect(0, 0, w, h);
+    var g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = (VIEWER_BG[DISPLAY.viewerBg] || VIEWER_BG.black)[1]; g.fillRect(0, 0, w, h);
     var img = curImg();
-    if (!img) { g.fillStyle = '#94A3B8'; g.font = '14px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('No image loaded. Use Upload Image or Connect Source (after consent).', w / 2, h / 2); return; }
+    if (!img) { g.fillStyle = viewerBgIsLight() ? '#334155' : '#94A3B8'; g.font = '14px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('No image loaded. Use Upload Image or Connect Source (after consent).', w / 2, h / 2); return; }
     var t = T(img); g.imageSmoothingEnabled = view.zoom < 3; g.drawImage(display(img), t.ox, t.oy, img.w * t.s, img.h * t.s);
     // Layer 2: AI suggestions (separate memory-only layer)
     if (S.layers.ai) {
@@ -683,7 +704,7 @@ var Inspector = (function () {
     }
     // Key-image marker
     if (S.keyImages.some(function (k) { return k.imageId === img.id && k.frame === S.frame; })) { g.fillStyle = '#FDE047'; g.font = '700 12px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('★ Key image', w - 10, 18); g.textAlign = 'left'; }
-    g.fillStyle = 'rgba(203,213,225,.9)'; g.font = '11px system-ui,sans-serif';
+    g.fillStyle = viewerBgIsLight() ? 'rgba(15,23,42,.9)' : 'rgba(203,213,225,.9)'; g.font = '11px system-ui,sans-serif';
     g.fillText(imgLabel(img) + (img.kind === 'gray' ? ' · W ' + num(img.wl.w, 0) + ' / L ' + num(img.wl.c, 0) : '') + ' · ' + Math.round(view.zoom * 100) + '%', 10, h - 10);
     if (!img.isDicom) { g.fillStyle = '#FCD34D'; g.fillText(TEXT.nonDicom, 10, 18); }
     if (hover && S.tool !== 'pan' && S.tool !== 'wl') { g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([]); g.beginPath(); g.moveTo(hover.x - 8, hover.y); g.lineTo(hover.x + 8, hover.y); g.moveTo(hover.x, hover.y - 8); g.lineTo(hover.x, hover.y + 8); g.stroke(); }
@@ -695,6 +716,7 @@ var Inspector = (function () {
     if (S.tool === 'pan') { drag = { kind: 'pan', x: e.clientX, y: e.clientY, px: view.px, py: view.py }; return; }
     if (S.tool === 'wl') { drag = { kind: 'wl', x: e.clientX, y: e.clientY, c: img.wl.c, w: img.wl.w }; return; }
     if (p.x < 0 || p.y < 0 || p.x > img.w || p.y > img.h) return;
+    if (S.tool === 'aiclick') { aiClickAt(p); return; }   // AI click-to-segment (explicit user action)
     if (S.tool === 'angle' || S.tool === 'polygon') {
       if (!S.pending || S.pending.type !== S.tool) S.pending = newAnn(S.tool, p, img);
       else {
@@ -915,14 +937,14 @@ async function runInference() {
   if (S.ai.mode === 'remote' && (!S.ai.remote.enabled || !S.consent.remote)) { openConsent('remote'); return; }
   S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running experimental inference…');
   try {
-    var out = S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
-    var n = 0; out.forEach(function (r) { r.id = 'S' + (++n + S.ai.results.length); });
+    var out = S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
+    out.forEach(function (r) { r.id = nextAiId(); });
     S.ai.results = S.ai.results.filter(function (r) { return r.imageId !== S.current || r.accepted; }).concat(out);
-    S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'local' ? 'local-browser' : 'user-endpoint' };
+    S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'remote' ? 'user-endpoint' : 'local-browser' };
     announce('Inference finished: ' + out.length + ' AI suggestions (experimental, not a diagnosis).');
   } catch (e) {
     var k = e && e.message;
-    S.ai.error = k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
+    S.ai.error = k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
   } finally { S.ai.running = false; scheduleRender(); }
 }
 function scoreLabel(s) { return s == null ? 'not reported' : s >= 0.9 ? 'Very high' : s >= 0.75 ? 'High' : s >= 0.5 ? 'Medium' : 'Low'; }
@@ -937,6 +959,191 @@ function acceptSuggestion(id) {
   r.accepted = true; S.annotations.push(a); S.selected = a.id; toast('Accepted as user annotation ' + a.id + ' (originally AI-derived).'); scheduleRender();
 }
 function rejectSuggestion(id) { S.ai.results = S.ai.results.filter(function (x) { return x.id !== id; }); scheduleRender(); }
+/* ====================================================================
+   AI DETECTION (built in; never automatic — every run is a click)
+   Mode D  builtin: automatic candidate detection with a rule-based
+           computer-vision method (difference-of-Gaussians blobs +
+           connected components) on the displayed image. Instant, no
+           download, no network request.
+   Mode E  sam: AI detection & segmentation with the Segment Anything
+           Model (SAM ViT-B, Meta AI, Apache-2.0), the same ONNX export
+           the OHIF Viewer uses. The model files are self-hosted on this
+           site (/assets/models/sam-b/, see scripts/fetch-ai-models.sh)
+           and run in ONNX Runtime Web in this browser (WebGPU when
+           available, otherwise WebAssembly). Images never leave the
+           browser. "Detect & segment" refines the built-in candidates
+           with SAM box prompts; "Click to segment" runs SAM at a point.
+   Outputs are AI suggestions on the separate AI layer until accepted.
+   ==================================================================== */
+var BUILTIN_CARD = normCard({ card: {
+  name: 'Built-in candidate detector', version: '1.0', source: 'Imaging Workbench page code (runs in your browser)', license: 'Part of this website',
+  intendedUse: 'Research and education: highlights compact regions whose brightness differs from their surroundings on the displayed image (difference-of-Gaussians blob detection with connected components), so you can inspect them. It is a rule-based computer-vision method, not a trained AI model, and it does not decide whether a region is abnormal.',
+  validationStatus: 'Not validated on any clinical dataset', modality: ['Any 2D image (uses the displayed window/level)'], imageTypes: ['DICOM', 'PNG', 'JPEG', 'WebP'],
+  limitations: ['Finds any compact bright or dark spot: vessels, bowel, bone and artefacts are flagged too', 'Depends on the current window/level', 'Single 2D image; no 3D context', 'Regions touching the image edge are ignored'],
+  failureModes: ['Misses lesions with little contrast to their surroundings', 'Splits or merges adjacent structures', 'Many false positives on noisy images'],
+  calibrated: false, confidenceMeaning: 'Relative local contrast and compactness of the region (0–1). It is not a probability of disease.', regulatoryStatus: 'None', lastVerified: '2026-10-03'
+}, output: { type: 'segmentation' } }, 'local-browser');
+var SAM_CARD = normCard({ card: {
+  name: 'Segment Anything Model (SAM) ViT-B', version: 'sam_vit_b_01ec64 · ONNX export (fp16 encoder) as used by the OHIF Viewer', source: 'Meta AI Segment Anything', link: 'https://github.com/facebookresearch/segment-anything', license: 'Apache-2.0',
+  intendedUse: 'General-purpose promptable segmentation: outlines the object inside a box from the built-in detector or at a point you click. Trained on natural images (SA-1B), not on medical images; it does not decide whether a region is abnormal.',
+  validationStatus: 'Not validated for medical imaging or diagnosis', modality: ['Any 2D image (uses the displayed window/level)'], imageTypes: ['DICOM', 'PNG', 'JPEG', 'WebP'],
+  limitations: ['Trained on natural photographs, not radiology', 'Segments whatever is at the prompt; it does not detect disease', 'The image is resized to 1024 × 1024 for the model', 'Large download (about 200 MB) the first time it is loaded in a page'],
+  failureModes: ['Leaks into neighbouring structures with similar intensity', 'Over- or under-segments low-contrast lesions', 'Fails on very small regions'],
+  calibrated: false, confidenceMeaning: "The model's own predicted mask quality (IoU estimate, 0–1). It is not a probability of disease.", regulatoryStatus: 'None', lastVerified: '2026-10-03'
+}, output: { type: 'segmentation' } }, 'local-browser');
+
+// Suggestion IDs only ever increase within a session (S1, S2, …), so they never repeat.
+function nextAiId() { S.ai.seq = (S.ai.seq || 0) + 1; return 'S' + S.ai.seq; }
+
+/* ---- (D) built-in candidate detection ---- */
+function boxBlur(src, w, h, r) {
+  var tmp = new Float32Array(w * h), out = new Float32Array(w * h), d = 2 * r + 1, x, y, acc, row;
+  for (y = 0; y < h; y++) { row = y * w; acc = 0; for (x = -r; x <= r; x++) acc += src[row + Math.min(w - 1, Math.max(0, x))];
+    for (x = 0; x < w; x++) { tmp[row + x] = acc / d; acc += src[row + Math.min(w - 1, x + r + 1)] - src[row + Math.max(0, x - r)]; } }
+  for (x = 0; x < w; x++) { acc = 0; for (y = -r; y <= r; y++) acc += tmp[Math.min(h - 1, Math.max(0, y)) * w + x];
+    for (y = 0; y < h; y++) { out[y * w + x] = acc / d; acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x]; } }
+  return out;
+}
+function gaussApprox(src, w, h, r) { return boxBlur(boxBlur(boxBlur(src, w, h, r), w, h, r), w, h, r); }
+function detectCandidates(img, opts) {
+  opts = opts || {};
+  var sc = Math.min(1, 256 / Math.max(img.w, img.h)), W = Math.max(16, Math.round(img.w * sc)), Hh = Math.max(16, Math.round(img.h * sc)), n = W * Hh;
+  var c = document.createElement('canvas'); c.width = W; c.height = Hh; var g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(Inspector.display(img), 0, 0, W, Hh);
+  var px = g.getImageData(0, 0, W, Hh).data; c.width = c.height = 0;
+  var L = new Float32Array(n), i; for (i = 0; i < n; i++) L[i] = (0.299 * px[4 * i] + 0.587 * px[4 * i + 1] + 0.114 * px[4 * i + 2]) / 255;
+  var r1 = Math.max(1, Math.round(Math.min(W, Hh) / 170)), r2 = Math.max(4, Math.round(Math.min(W, Hh) / 40));
+  var a = gaussApprox(L, W, Hh, r1), b = gaussApprox(L, W, Hh, r2), dog = new Float32Array(n), body = new Uint8Array(n), sum = 0, sq = 0, cnt = 0;
+  for (i = 0; i < n; i++) { dog[i] = a[i] - b[i]; if (b[i] > 0.06) { body[i] = 1; sum += dog[i]; sq += dog[i] * dog[i]; cnt++; } }
+  if (cnt < 50) return [];
+  var mean = sum / cnt, sd = Math.sqrt(Math.max(0, sq / cnt - mean * mean)); if (sd < 1e-4) return [];
+  var k = opts.k || 2.2, minA = Math.max(6, Math.round(n * 0.0004)), out = [];
+  [1, -1].forEach(function (pol) {
+    var bin = new Uint8Array(n); for (var j = 0; j < n; j++) if (body[j] && pol * (dog[j] - mean) > k * sd) bin[j] = 1;
+    components(bin, W, Hh, minA).forEach(function (cmp) {
+      var area = cmp.pixels.length, bb = cmp.bbox; if (area > n * 0.06) return;
+      if (bb[0] <= 0 || bb[1] <= 0 || bb[2] >= W || bb[3] >= Hh) return;            // touches the image edge
+      var bw = bb[2] - bb[0], bh = bb[3] - bb[1], fill = area / Math.max(1, bw * bh), ar = Math.max(bw, bh) / Math.max(1, Math.min(bw, bh));
+      if (fill < 0.3 || ar > 4) return;
+      var s = 0; cmp.pixels.forEach(function (p) { s += pol * (dog[p] - mean); }); var z = s / area / sd;
+      var score = Math.max(0.01, Math.min(0.99, (1 - Math.exp(-(z - k + 0.4) * 0.9)) * (0.6 + 0.4 * Math.min(1, fill / 0.6))));
+      var md = new Uint8Array(n); cmp.pixels.forEach(function (p) { md[p] = 1; });
+      out.push({ polarity: pol > 0 ? 'brighter' : 'darker', score: score, area: area / n, mask: { w: W, h: Hh, data: md, bbox: [bb[0] / W * img.w, bb[1] / Hh * img.h, bb[2] / W * img.w, bb[3] / Hh * img.h] } });
+    });
+  });
+  return out.sort(function (x, y) { return y.score - x.score; }).slice(0, opts.max || 12);
+}
+function runBuiltin() {
+  var img = curImg(); if (!img) return [];
+  var key = 'b' + Date.now();
+  return detectCandidates(img).map(function (c, i) {
+    return { imageId: img.id, frame: S.frame, type: 'mask', label: 'Candidate region (' + c.polarity + ' than surroundings)', score: c.score, uncertainty: null, provenance: 'Rule-based experimental detection (not trained AI)', calibrated: 'no', model: BUILTIN_CARD.name + ' ' + BUILTIN_CARD.version, mask: Object.assign({ key: key + i }, c.mask) };
+  });
+}
+
+/* ---- (E) SAM ViT-B: self-hosted AI segmentation ---- */
+var SAM = { base: '/assets/models/sam-b/', encoder: 'encoder.onnx', decoder: 'decoder.onnx', status: 'unknown', sizeMB: null, error: null, provider: null, ort: null, enc: null, dec: null, emb: null, embKey: null };
+function samCheck() {
+  if (SAM.status !== 'unknown' || location.protocol === 'file:') { if (location.protocol === 'file:') SAM.status = 'missing'; return; }
+  SAM.status = 'checking';
+  var head = function (f) { return fetch(SAM.base + f, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin' }); };
+  Promise.all([head(SAM.encoder), head(SAM.decoder)]).then(function (r) {
+    var ok = r[0].ok && r[1].ok && !/text\/html/i.test(r[0].headers.get('content-type') || '');
+    SAM.status = ok ? 'available' : 'missing';
+    var len = Number(r[0].headers.get('content-length') || 0) + Number(r[1].headers.get('content-length') || 0); SAM.sizeMB = len ? len / 1048576 : null;
+  }).catch(function () { SAM.status = 'missing'; }).then(scheduleRender);
+}
+function loadOrtSam(gpu) {
+  if (!gpu) return loadOrt();
+  return import(CONFIG.ortBase + 'ort.webgpu.min.mjs').then(function (mod) {
+    var ort = mod && (mod.InferenceSession ? mod : mod.default); if (!ort || !ort.InferenceSession) throw new Error('runtime-unavailable');
+    ort.env.wasm.wasmPaths = CONFIG.ortBase; ort.env.wasm.numThreads = 1; ort.env.wasm.proxy = false; if (ort.env.logLevel !== undefined) ort.env.logLevel = 'fatal';
+    ort.__gpu = true; return ort;
+  }).catch(function () { return loadOrt(); });
+}
+async function samLoad() {
+  if (SAM.status === 'ready' || SAM.status === 'loading') return;
+  SAM.status = 'loading'; SAM.error = null; scheduleRender(); announce('Loading the AI model from this site…');
+  try {
+    var ort = await loadOrtSam(!!navigator.gpu);
+    var get = async function (f) { var r = await fetch(SAM.base + f, { credentials: 'same-origin' }); if (!r.ok) throw new Error('missing'); return new Uint8Array(await r.arrayBuffer()); };
+    var create = async function (bytes) {
+      if (ort.__gpu) { try { var sg = await ort.InferenceSession.create(bytes, { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }); SAM.provider = 'WebGPU'; return sg; } catch (e) { /* fall back to WebAssembly */ } }
+      var sw = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' }); SAM.provider = SAM.provider || 'WebAssembly (CPU)'; return sw;
+    };
+    SAM.enc = await create(await get(SAM.encoder));
+    SAM.dec = await create(await get(SAM.decoder));
+    SAM.ort = ort; SAM.status = 'ready'; announce('AI model ready (' + SAM.provider + ').');
+  } catch (e) {
+    SAM.status = 'error';
+    SAM.error = e && e.message === 'runtime-unavailable' ? 'The inference runtime is not deployed on this site (/assets/ort/).' : e && e.message === 'missing' ? 'The AI model files are not deployed on this site.' : 'This browser could not load the AI model (it needs WebGPU or enough memory for WebAssembly).';
+  }
+  scheduleRender();
+}
+async function samEmbed(img) {
+  var key = img.id + '|' + S.frame + '|' + (img.kind === 'gray' ? img.wl.c.toFixed(2) + '|' + img.wl.w.toFixed(2) + '|' + (img.invert ? 1 : 0) : 'rgb');
+  if (SAM.embKey === key && SAM.emb) return SAM.emb;
+  var c = document.createElement('canvas'); c.width = 1024; c.height = 1024; var g = c.getContext('2d'); g.drawImage(Inspector.display(img), 0, 0, 1024, 1024);
+  var id = g.getImageData(0, 0, 1024, 1024); c.width = c.height = 0;
+  var t = await SAM.ort.Tensor.fromImage(id), feed = {}; feed[SAM.enc.inputNames[0]] = t;
+  var out = await SAM.enc.run(feed);
+  SAM.emb = out.image_embeddings || out.embeddings || out[SAM.enc.outputNames[0]]; SAM.embKey = key;
+  return SAM.emb;
+}
+async function samDecode(emb, points, labels) {
+  var T = SAM.ort.Tensor, feed = {
+    image_embeddings: new T(emb.type, emb.data, emb.dims), embeddings: new T(emb.type, emb.data, emb.dims),
+    point_coords: new T('float32', new Float32Array(points), [1, points.length / 2, 2]), point_labels: new T('float32', new Float32Array(labels), [1, labels.length]),
+    mask_input: new T('float32', new Float32Array(256 * 256), [1, 1, 256, 256]), has_mask_input: new T('float32', new Float32Array([0]), [1]), orig_im_size: new T('float32', new Float32Array([1024, 1024]), [2])
+  }, f2 = {};
+  SAM.dec.inputNames.forEach(function (nm) { if (feed[nm]) f2[nm] = feed[nm]; });
+  var res = await SAM.dec.run(f2);
+  var m = res.masks || res[SAM.dec.outputNames[0]], iou = res.iou_predictions || res.scores || null;
+  if (!m || !m.dims || m.dims.length < 3) throw new Error('shape');
+  var H2 = m.dims[m.dims.length - 2], W2 = m.dims[m.dims.length - 1], K = m.dims.length === 4 ? m.dims[1] : 1, best = 0;
+  if (iou && iou.data && K > 1) for (var q = 1; q < K; q++) if (iou.data[q] > iou.data[best]) best = q;
+  return { data: m.data, off: best * H2 * W2, H: H2, W: W2, iou: iou && iou.data ? Number(iou.data[best]) : null };
+}
+function samToMask(r, img, key) {
+  var G = 256, md = new Uint8Array(G * G), x0 = G, y0 = G, x1 = -1, y1 = -1, area = 0;
+  for (var gy = 0; gy < G; gy++) for (var gx = 0; gx < G; gx++) {
+    var sy = Math.min(r.H - 1, Math.floor((gy + 0.5) * r.H / G)), sx = Math.min(r.W - 1, Math.floor((gx + 0.5) * r.W / G));
+    if (r.data[r.off + sy * r.W + sx] > 0) { md[gy * G + gx] = 1; area++; if (gx < x0) x0 = gx; if (gy < y0) y0 = gy; if (gx > x1) x1 = gx; if (gy > y1) y1 = gy; }
+  }
+  if (!area) return null;
+  return { key: key, w: G, h: G, data: md, area: area / (G * G), bbox: [x0 / G * img.w, y0 / G * img.h, (x1 + 1) / G * img.w, (y1 + 1) / G * img.h] };
+}
+function samResult(img, mask, score, label) {
+  return { imageId: img.id, frame: S.frame, type: 'mask', label: label, score: score != null ? Math.max(0, Math.min(1, score)) : null, uncertainty: null, provenance: 'AI-derived experimental inference', calibrated: 'no', model: SAM_CARD.name, mask: mask };
+}
+async function samDetect() {
+  var img = curImg(); if (!img) return [];
+  if (SAM.status !== 'ready') await samLoad(); if (SAM.status !== 'ready') throw new Error('sam-unavailable');
+  var cands = detectCandidates(img, { max: 6 }), emb = await samEmbed(img), out = [], key = 's' + Date.now();
+  for (var i = 0; i < cands.length; i++) {
+    var b = cands[i].mask.bbox, px = (b[2] - b[0]) * 0.1, py = (b[3] - b[1]) * 0.1;
+    var X0 = Math.max(0, b[0] - px), Y0 = Math.max(0, b[1] - py), X1 = Math.min(img.w, b[2] + px), Y1 = Math.min(img.h, b[3] + py);
+    var r = await samDecode(emb, [X0 / img.w * 1024, Y0 / img.h * 1024, X1 / img.w * 1024, Y1 / img.h * 1024], [2, 3]);
+    var m = samToMask(r, img, key + i); if (!m || m.area > 0.35) continue;      // empty or leaked into most of the image
+    out.push(samResult(img, m, r.iou, 'AI-segmented candidate (' + cands[i].polarity + ' than surroundings)'));
+  }
+  return out;
+}
+async function aiClickAt(p) {
+  var img = curImg(); if (!img) return;
+  if (S.ai.mode !== 'sam') { toast('Choose “AI detection & segmentation (SAM)” in the AI panel first.'); return; }
+  if (!consentState()) { openConsent('ai'); return; }
+  if (!S.ai.reviewed) { toast('Review the model card and confirm before running.'); return; }
+  if (S.ai.running) { toast('One inference at a time.'); return; }
+  S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running AI segmentation at the clicked point…');
+  try {
+    if (SAM.status !== 'ready') await samLoad(); if (SAM.status !== 'ready') throw new Error('sam-unavailable');
+    var emb = await samEmbed(img), r = await samDecode(emb, [p.x / img.w * 1024, p.y / img.h * 1024], [1]);
+    var m = samToMask(r, img, 'c' + Date.now());
+    if (!m) { toast('The AI model found no region at that point.'); }
+    else { var res = samResult(img, m, r.iou, 'AI segmentation at your click'); res.id = nextAiId(); S.ai.results.push(res); S.ai.lastRun = { at: isoNow(), imageId: S.current, count: 1, runtime: 'local-browser' }; announce('AI suggestion ' + res.id + ' added (experimental, not a diagnosis).'); }
+  } catch (e) { S.ai.error = e && e.message === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : 'AI segmentation failed on this image.'; }
+  finally { S.ai.running = false; scheduleRender(); }
+}
 
 /* ====================================================================
    INGEST (memory only): local files, DICOMweb, synthetic phantom
@@ -1152,7 +1359,7 @@ function openConsent(purpose, files) {
 }
 function panelHome() {
   return H`<div class="oi-hero"><h2>Welcome to the Oncotics Imaging Workbench</h2>
-    <p>View images with the OHIF Viewer or the built-in Oncotics Inspector, inspect lesions, measure, annotate, and — only if you choose — run experimental AI detection with a model you load. Everything stays in your browser memory.</p>
+    <p>View images with the OHIF Viewer or the built-in Oncotics Inspector, inspect lesions, measure, annotate, and — only if you choose — run experimental AI detection (built-in automatic detection, the self-hosted SAM AI segmentation model, or a model you load). Everything stays in your browser memory.</p>
     <div class="oi-grid-3">${[['shield', 'Memory-only', 'Oncotics does not upload or store DICOM/image data. Connections, uploads, inference results and annotations are memory-only; refresh or Clear Session wipes them.'], ['alert', 'PHI-aware', 'DICOM/images may contain PHI. De-identify data when possible. Patient name, ID, dates, institution, accession and operator are hidden by default.'], ['spark', 'Experimental AI only', 'AI detection/inference is opt-in, never automatic, experimental and non-diagnostic. Model cards are shown before anything runs.']].map(function (x) { return H`<div class="oi-feature">${icon(x[0])}<div><h3>${x[1]}</h3><p>${x[2]}</p></div></div>`; })}</div>
     <div class="oi-actions">
       <button type="button" class="oi-btn oi-btn-primary" data-act="panel" data-panel="connect">${icon('link')}Connect DICOMweb endpoint</button>
@@ -1216,7 +1423,7 @@ function seriesNav() {
 function inspectorPanel(withTools) {
   var img = curImg();
   var tools = H`<div class="oi-toolbar" role="toolbar" aria-label="Inspector tools">${REGISTRY.tools.map(function (t) { return H`<button type="button" class="oi-tool" aria-pressed="${S.tool === t[0] ? 'true' : 'false'}" data-act="tool" data-tool="${t[0]}">${t[1]}</button>`; })}
-    <button type="button" class="oi-tool" data-act="view-reset">Reset view</button><button type="button" class="oi-tool" data-act="step" data-dir="-1" aria-label="Previous image">◀</button><button type="button" class="oi-tool" data-act="step" data-dir="1" aria-label="Next image">▶</button>
+    ${S.ai.mode === 'sam' ? H`<button type="button" class="oi-tool" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" data-act="tool" data-tool="aiclick">AI click-to-segment</button>` : ''}<button type="button" class="oi-tool" data-act="view-reset">Reset view</button><button type="button" class="oi-tool" data-act="step" data-dir="-1" aria-label="Previous image">◀</button><button type="button" class="oi-tool" data-act="step" data-dir="1" aria-label="Next image">▶</button>
     <button type="button" class="oi-tool" data-act="key-image">★ Key image</button><button type="button" class="oi-tool" data-act="compare-add">+ Compare</button></div>`;
   var layers = H`<div class="oi-row oi-small" style="margin-top:6px"><label class="oi-check"><input type="checkbox" data-change="layer-ai" ${S.layers.ai ? raw('checked') : ''}>AI suggestion layer</label><label class="oi-small">opacity <input type="range" min="0.1" max="1" step="0.05" value="${S.layers.aiOpacity}" data-change="ai-opacity" aria-label="AI overlay opacity"></label>
     <label class="oi-check"><input type="checkbox" data-change="layer-ann" ${S.layers.ann ? raw('checked') : ''}>User annotations</label><label class="oi-small">opacity <input type="range" min="0.1" max="1" step="0.05" value="${S.layers.annOpacity}" data-change="ann-opacity" aria-label="Annotation opacity"></label></div>`;
@@ -1227,7 +1434,7 @@ function inspectorPanel(withTools) {
   return H`${withTools ? tools : ''}<div class="oi-viewer-wrap"><div id="oi-viewer-mount" class="oi-viewer-mount"></div></div>${withTools ? layers : ''}
     ${img && img.frames.length > 1 ? H`<label class="oi-row oi-small" style="margin-top:6px">Frame <input type="range" min="0" max="${img.frames.length - 1}" value="${S.frame}" data-change="frame" aria-label="Frame"> ${S.frame + 1}/${img.frames.length}</label>` : ''}
     ${img && img.kind === 'gray' ? H`<div class="oi-row oi-small" style="margin-top:6px">Window presets: ${[['Soft tissue', 40, 400], ['Lung', -600, 1500], ['Bone', 400, 1800], ['Brain', 40, 80], ['Full range', (img.range.min + img.range.max) / 2, img.range.max - img.range.min]].map(function (p) { return H`<button type="button" class="oi-btn oi-btn-sm oi-btn-ghost" data-act="wl-preset" data-c="${p[1]}" data-w="${p[2]}">${p[0]}</button>`; })}</div>` : ''}
-    ${S.tool !== 'pan' && S.tool !== 'wl' ? H`<p class="oi-subtle">${{ length: 'Drag to measure a length.', bidir: 'Drag the long axis, then drag the short axis.', rect: 'Drag a rectangle ROI.', ellipse: 'Drag an ellipse ROI.', angle: 'Click three points (vertex second).', polygon: 'Click points; double-click, Enter or click the first point to close.' }[S.tool] || ''} Measurements are listed in Annotations.</p>` : ''}
+    ${S.tool !== 'pan' && S.tool !== 'wl' ? H`<p class="oi-subtle">${{ aiclick: 'AI click-to-segment: click a structure to outline it with the AI model (experimental; each click is one AI suggestion).', length: 'Drag to measure a length.', bidir: 'Drag the long axis, then drag the short axis.', rect: 'Drag a rectangle ROI.', ellipse: 'Drag an ellipse ROI.', angle: 'Click three points (vertex second).', polygon: 'Click points; double-click, Enter or click the first point to close.' }[S.tool] || ''} Measurements are listed in Annotations.</p>` : ''}
     ${meta}`;
 }
 function panelInspect() {
@@ -1252,21 +1459,32 @@ function panelAI() {
   var A = S.ai, img = curImg(), vis = aiVisible().filter(function (r) { return r.imageId === S.current; }), all = A.results.filter(function (r) { return r.imageId === S.current && !r.accepted; }), suppressed = all.length - vis.length;
   var modeSel = H`<fieldset class="oi-card"><legend class="oi-card-title">1 · Choose an inference source</legend>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="none" data-change="ai-mode" ${A.mode === 'none' ? raw('checked') : ''}><span><strong>None (default)</strong> — viewing, manual measurement and annotation only.</span></label>
+    <label class="oi-check"><input type="radio" name="oi-ai-mode" value="builtin" data-change="ai-mode" ${A.mode === 'builtin' ? raw('checked') : ''}><span><strong>Automatic detection — built-in (instant, no download)</strong> — finds compact regions that stand out from their surroundings on the displayed image. Rule-based computer vision, not trained AI.</span></label>
+    <label class="oi-check"><input type="radio" name="oi-ai-mode" value="sam" data-change="ai-mode" ${A.mode === 'sam' ? raw('checked') : ''}><span><strong>AI detection & segmentation — SAM ViT-B (self-hosted)</strong> — finds candidate regions, then outlines each with the Segment Anything AI model; or click any structure to segment it. Runs in your browser; the image never leaves it.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="local" data-change="ai-mode" ${A.mode === 'local' ? raw('checked') : ''}><span><strong>Local browser model (preferred)</strong> — an ONNX model and Oncotics model manifest you load from your device. No image leaves your browser.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="remote" data-change="ai-mode" ${A.mode === 'remote' ? raw('checked') : ''}><span><strong>User-supplied endpoint (advanced)</strong> — the image is sent from your browser to an endpoint you type. Disabled until you enable it and consent.</span></label></fieldset>`;
   var src = '';
   if (A.mode === 'local') src = H`<div class="oi-card"><div class="oi-card-title">2 · Load model and manifest (memory only)</div>
       <label class="oi-drop"><input type="file" accept=".json,application/json" data-change="ai-manifest"><span>${icon('card')} Model manifest (oncotics-model-manifest/1 JSON)</span></label>
       <label class="oi-drop"><input type="file" accept=".onnx" data-change="ai-model"><span>${icon('spark')} ONNX model file${A.modelBytes ? ' — loaded (' + num(A.modelBytes.byteLength / 1048576, 1) + ' MB)' : ''}</span></label>
-      ${A.manifestError ? notice('bad', H`<strong>Manifest rejected:</strong> ${A.manifestError}`) : ''}<p class="oi-subtle">No model is bundled with Oncotics. The WebAssembly runtime is self-hosted at ${CONFIG.ortBase}; no network request is made for inference. See the manifest format in Model Cards & Limitations.</p></div>`;
+      ${A.manifestError ? notice('bad', H`<strong>Manifest rejected:</strong> ${A.manifestError}`) : ''}<p class="oi-subtle">Your own model: load it here. The WebAssembly runtime is self-hosted at ${CONFIG.ortBase}; no network request is made for inference. See the manifest format in Model Cards & Limitations.</p></div>`;
   if (A.mode === 'remote') src = H`<form class="oi-card oi-form" data-submit="ai-remote" autocomplete="off"><div class="oi-card-title">2 · Configure your trusted endpoint (memory only)</div>${notice('bad', H`<strong>This external endpoint may log, store, or process your image according to its own policy. Do not use unless trusted and authorized.</strong> ${TEXT.remote}`)}
       <label class="oi-field"><span>Endpoint URL (https)</span><input id="oi-ai-url" class="oi-input" type="url" value="${A.remote.url}" placeholder="https://inference.your-institution.example/v1/infer" spellcheck="false"></label>
       <label class="oi-field"><span>Authorization header value (optional; memory only)</span><input id="oi-ai-token" class="oi-input" type="password" placeholder="${A.remote.token ? '•••••• set' : 'not set'}"></label>
       <label class="oi-field"><span>Model name / id (optional)</span><input id="oi-ai-model" class="oi-input" value="${A.remote.model}" maxlength="80"></label>
       <p class="oi-subtle">Request: POST JSON {format:"oncotics-inference-exchange/1", image:{mime:"image/png", encoding:"base64", data, width, height}, modality, model}. Expected response: {model:{…card}, outputs:[{type, label, score, uncertainty?, box?[x0,y0,x1,y1 normalized], polygon?, point?}]}. Endpoint terms are unknown to Oncotics, so this mode is verify-only and off by default.</p>
       <div class="oi-card-foot"><button type="submit" class="oi-btn">${A.remote.enabled ? 'Update endpoint' : 'Enable this endpoint (requires consent)'}</button>${A.remote.enabled ? H`<button type="button" class="oi-btn" data-act="ai-remote-off">Disable and forget endpoint</button>` : ''}</div></form>`;
+  if (A.mode === 'builtin') src = H`<div class="oi-card"><div class="oi-card-title">2 · Built-in detector</div><p class="oi-small">Runs instantly on the displayed image (current window/level) at reduced resolution. Change the window/level to target soft tissue, lung or bone. No network request is made.</p></div>`;
+  if (A.mode === 'sam') src = H`<div class="oi-card"><div class="oi-card-title">2 · AI model on this site</div>
+      ${SAM.status === 'checking' || SAM.status === 'unknown' ? H`<p class="oi-row oi-small"><span class="oi-spinner"></span> Checking for the self-hosted AI model…</p>` : ''}
+      ${SAM.status === 'missing' ? notice('warn', H`<strong>The AI model files are not deployed on this site.</strong> Site operators: run <code>oncotics/scripts/fetch-ai-models.sh</code> to self-host SAM ViT-B (Apache-2.0) in ${SAM.base}. Until then, use Automatic detection — built-in.`) : ''}
+      ${SAM.status === 'available' ? H`<p class="oi-small">Model files found on this site${SAM.sizeMB ? ' (' + num(SAM.sizeMB, 0) + ' MB)' : ''}. They download from this site once per page and stay in memory; the image never leaves your browser.</p><div class="oi-card-foot"><button type="button" class="oi-btn" data-act="sam-load">${icon('spark')}Load AI model</button></div>` : ''}
+      ${SAM.status === 'loading' ? H`<p class="oi-row oi-small" role="status"><span class="oi-spinner"></span> Loading the AI model from this site… this can take a minute.</p>` : ''}
+      ${SAM.status === 'ready' ? notice('good', 'AI model loaded in this browser (' + SAM.provider + ').') : ''}
+      ${SAM.status === 'error' ? notice('bad', SAM.error) : ''}</div>`;
   var card = A.card ? H`<div>${modelCardView(A.card)}<label class="oi-check" style="margin-top:8px"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I have reviewed the model card and limitations, and I understand outputs are experimental and not a diagnosis.</span></label></div>` : (A.mode === 'local' ? H`<p class="oi-subtle">The model card appears after a valid manifest is loaded.</p>` : A.mode === 'remote' ? H`<p class="oi-subtle">The endpoint’s model card (if it returns one) is shown after the first run; review it before relying on any output.</p>${A.remote.enabled ? H`<label class="oi-check"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I understand the endpoint’s outputs are experimental and not a diagnosis.</span></label>` : ''}` : '');
-  var canRun = A.mode !== 'none' && A.reviewed && img && consentState() && !A.running && (A.mode === 'local' ? (A.model && A.modelBytes) : (A.remote.enabled && S.consent.remote));
+  var samOk = SAM.status === 'available' || SAM.status === 'ready';
+  var canRun = A.mode !== 'none' && A.reviewed && img && consentState() && !A.running && (A.mode === 'builtin' ? true : A.mode === 'sam' ? samOk : A.mode === 'local' ? (A.model && A.modelBytes) : (A.remote.enabled && S.consent.remote));
   var results = H`<div class="oi-card"><div class="oi-card-title">4 · AI suggestions for the current image ${badge('AI suggestion', 'ai')}${badge('Experimental', 'warn')}${badge('Not a diagnosis', 'bad')}</div>
     <p class="oi-small">${TEXT.confidence} ${A.card && A.card.calibrated !== 'yes' ? H`<strong>Calibration: ${A.card.calibrated}.</strong> Scores may not correspond to frequencies.` : ''}</p>
     <label class="oi-row oi-small">Threshold <input type="range" min="0" max="1" step="0.01" value="${A.threshold}" data-change="ai-threshold" aria-label="Model score threshold"> <strong>${A.threshold.toFixed(2)}</strong> ${suppressed > 0 ? H`<span class="oi-subtle">· ${suppressed} lower-scoring suggestion(s) hidden by this threshold (not discarded)</span>` : ''}</label>
@@ -1277,7 +1495,7 @@ function panelAI() {
     ${notice('bad', H`<strong>${TEXT.aiWarn}</strong> ${TEXT.modelOut}`)}
     <div class="oi-grid-2" style="margin-top:10px">${notice('warn', H`<strong>Patients and caregivers:</strong> ${TEXT.patient}`)}${notice('warn', H`<strong>Clinicians:</strong> ${TEXT.clinician}`)}</div>
     <div class="oi-stack" style="margin-top:12px">${modeSel}${src}${A.mode !== 'none' ? H`<div class="oi-card"><div class="oi-card-title">3 · Review the model card, then run</div>${card}
-      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : 'Run detection / inference on the current image'}</button><span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
+      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : A.mode === 'builtin' ? 'Run automatic detection on the current image' : A.mode === 'sam' ? 'Detect & segment with AI on the current image' : 'Run detection / inference on the current image'}</button>${A.mode === 'sam' ? H`<button type="button" class="oi-btn" data-act="tool" data-tool="aiclick" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" ${samOk && A.reviewed && img && consentState() ? '' : raw('disabled')}>${icon('scan')}${S.tool === 'aiclick' ? 'Click-to-segment is on: click the image' : 'AI click-to-segment'}</button>` : ''}<span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
       ${A.error ? notice('bad', A.error) : ''}</div>` : ''}
       ${S.images.size ? H`<div class="oi-card"><div class="oi-card-title">Current image</div>${inspectorPanel(false)}</div>` : ''}
       ${A.results.length || A.lastRun ? results : ''}</div>`;
@@ -1306,7 +1524,10 @@ function panelExport() {
 }
 function panelModels() {
   return H`<h2>Model Cards & Limitations</h2>${notice('bad', H`<strong>${TEXT.modelOut}</strong>`)}${notice('info', TEXT.aiDerived)}${notice('warn', TEXT.community)}
-    ${S.ai.card ? modelCardView(S.ai.card) : H`<p class="oi-subtle" style="margin-top:10px">No model card loaded. Oncotics ships no model; the default mode is “None”.</p>`}
+    ${S.ai.card && S.ai.card !== BUILTIN_CARD && S.ai.card !== SAM_CARD ? H`<div style="margin-top:10px"><div class="oi-card-title">Model you loaded</div>${modelCardView(S.ai.card)}</div>` : ''}
+    <div class="oi-card-title" style="margin-top:12px">Built-in detection on this page</div>${modelCardView(BUILTIN_CARD)}
+    <div class="oi-card-title" style="margin-top:12px">Self-hosted AI model (if deployed on this site)</div>${modelCardView(SAM_CARD)}
+    <p class="oi-subtle">The default AI mode is “None”. Nothing runs until you choose a mode, review its card and press Run (or click with the AI click-to-segment tool).</p>
     <div class="oi-card" style="margin-top:12px"><div class="oi-card-title">Oncotics model manifest (oncotics-model-manifest/1)</div><pre class="oi-code">${JSON.stringify({ schema: 'oncotics-model-manifest/1', card: { name: 'Example lesion segmenter', version: '0.1.0', source: 'https://example.org/model-repo', license: 'Apache-2.0', intendedUse: 'Research only: highlight candidate regions on CT slices.', modality: ['CT'], imageTypes: ['DICOM', 'PNG'], validationStatus: 'research', limitations: ['Trained on a single public dataset'], failureModes: ['Misses small lesions', 'False positives at vessels'], calibrated: false, confidenceMeaning: 'Mean sigmoid output inside the region', regulatoryStatus: 'not claimed', lastVerified: '2026-01-15', link: 'https://example.org/model-card' }, input: { name: 'input', width: 256, height: 256, channels: 1, layout: 'NCHW', scale: 0.00392157, mean: [0], std: [1] }, output: { name: 'output', type: 'segmentation', labels: ['lesion'], activation: 'sigmoid', threshold: 0.5, minArea: 6 } }, null, 2)}</pre>
       <p class="oi-small">Output types: classification ([K] scores), segmentation / heatmap ([1,C,H,W] or [1,H,W]), boxes ([N,≥5]: x1,y1,x2,y2,score[,class]; boxFormat xyxy-normalized or xyxy-input), keypoints ([N,3]: x,y,score). Inputs are built from the displayed (window/levelled) image.</p></div>
     <div class="oi-card" style="margin-top:12px"><div class="oi-card-title">General limitations</div><ul class="oi-list"><li>Non-DICOM images are display images, not calibrated data.</li><li>Lossy compression, resizing and window/level choices change model inputs.</li><li>Models may be biased toward the populations, scanners and protocols they were trained on.</li><li>Scores are not probabilities of cancer; calibration is often unknown.</li><li>Oncotics does not perform RECIST or response assessment and makes no regulatory claim for any model.</li></ul></div>`;
@@ -1329,7 +1550,14 @@ var PANELS = { home: panelHome, consent: panelConsent, connect: panelConnect, up
    ==================================================================== */
 var rq = false;
 function scheduleRender() { if (rq) return; rq = true; requestAnimationFrame(function () { rq = false; render(); }); }
+function displayControls() {
+  var th = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+  return H`<div class="oi-seg" role="group" aria-label="Page theme"><span class="oi-seg-l">Theme</span>${th.map(function (t) { return H`<button type="button" class="oi-seg-b" aria-pressed="${DISPLAY.theme === t[0] ? 'true' : 'false'}" data-act="theme" data-theme="${t[0]}">${t[1]}</button>`; })}</div>
+    <label class="oi-seg"><span class="oi-seg-l">Viewer background</span><select class="oi-select oi-select-sm" data-change="viewer-bg" aria-label="Viewer background colour">${Object.keys(VIEWER_BG).map(function (k) { return H`<option value="${k}" ${DISPLAY.viewerBg === k ? raw('selected') : ''}>${VIEWER_BG[k][0]}</option>`; })}</select></label>`;
+}
+function applyTheme() { if (DISPLAY.theme === 'system') ROOT.removeAttribute('data-theme'); else ROOT.setAttribute('data-theme', DISPLAY.theme); }
 function render() {
+  applyTheme(); setHTML($('#oi-display'), displayControls());
   var ae = document.activeElement, fid = ae && ROOT.contains(ae) && ae.id ? ae.id : null;
   setHTML($('#oi-nav'), H`<ul role="tablist" aria-label="Imaging Workbench panels" aria-orientation="vertical">${REGISTRY.panels.map(function (p) { var sel = S.panel === p[0]; return H`<li role="presentation"><button type="button" role="tab" id="oi-tab-${p[0]}" class="oi-tab" aria-selected="${sel ? 'true' : 'false'}" tabindex="${sel ? '0' : '-1'}" aria-controls="oi-main" data-act="panel" data-panel="${p[0]}">${icon(p[2])}<span>${p[1]}</span></button></li>`; })}</ul>`);
   var main = $('#oi-main'); main.setAttribute('aria-labelledby', 'oi-tab-' + S.panel);
@@ -1354,6 +1582,7 @@ function clearSession(silent) {
   S.images.forEach(function (im) { im.frames.forEach(function (f) { try { f.fill(0); } catch (e) { /* ignore */ } }); im.identity = null; });
   URLS.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } }); URLS.clear();
   Inspector.clearCache(); if (S.ai.session && S.ai.session.release) { try { S.ai.session.release(); } catch (e) { /* ignore */ } }
+  SAM.emb = null; SAM.embKey = null;   // image-derived AI embedding (the model itself holds no image data)
   S = freshState(); UIDS = { study: uidMapper(), series: uidMapper() }; MODAL = null; renderModal();
   Array.prototype.forEach.call(ROOT.querySelectorAll('input[type=file]'), function (i) { i.value = ''; });
   render(); if (!silent) { toast('Imaging session cleared. Nothing was stored.'); announce('Imaging session cleared: images, annotations, inference results, endpoints and tokens were wiped from memory.'); }
@@ -1375,6 +1604,8 @@ var ACT = {
   'consent-inline': function () { var phi = $('#oi-c-phi'), nd = $('#oi-c-nd'); if (!phi.checked || !nd.checked) { toast('Please confirm both statements.'); return; } S.consent.phi = S.consent.nondiag = true; S.consent.at = isoNow(); toast('Consent saved for this page session (memory only).'); scheduleRender(); },
   'consent-revoke': function () { clearSession(true); toast('Consent withdrawn; imaging data wiped.'); },
   phantom: function () { loadPhantom(); },   // synthetic, contains no patient data: no consent needed
+  'sam-load': function () { samLoad(); },
+  theme: function (el) { var t = el.getAttribute('data-theme'); if (t === 'system' || t === 'light' || t === 'dark') { DISPLAY.theme = t; scheduleRender(); announce('Theme: ' + t + '.'); } },
   tool: function (el) { S.tool = el.getAttribute('data-tool'); S.pending = null; scheduleRender(); setTimeout(function () { Inspector.canvas.focus({ preventScroll: true }); }, 40); },
   'view-reset': function () { Inspector.reset(); scheduleRender(); }, step: function (el) { Inspector.step(parseInt(el.getAttribute('data-dir'), 10)); },
   'select-img': function (el) { S.current = el.getAttribute('data-id'); S.frame = 0; S.panel = S.panel === 'ai' ? 'ai' : 'inspect'; scheduleRender(); },
@@ -1414,7 +1645,8 @@ var CHANGE = {
   'ann-note': function (el) { var a = S.annotations.find(function (x) { return x.id === el.getAttribute('data-id'); }); if (a) a.note = String(el.value || '').slice(0, 140); },
   notes: function (el) { if (!el.checked) { S.notesEnabled = false; S.exportNotes = false; S.annotations.forEach(function (a) { a.note = ''; }); scheduleRender(); return; } el.checked = false; confirmBox('Enable free-text notes?', notice('bad', 'Notes stay in memory only and are never sent anywhere, but anything you type could be identifying. Do not enter PHI. Notes are excluded from exports unless you opt in.'), 'Enable notes').then(function (ok) { if (ok) { S.notesEnabled = true; scheduleRender(); } }); },
   'export-notes': function (el) { S.exportNotes = el.checked; },
-  'ai-mode': function (el) { S.ai.mode = el.value; S.ai.reviewed = false; S.ai.error = null; if (el.value !== 'local') { S.ai.model = null; if (el.value === 'none') S.ai.card = null; } scheduleRender(); },
+  'ai-mode': function (el) { S.ai.mode = el.value; S.ai.reviewed = false; S.ai.error = null; if (el.value !== 'local') S.ai.model = null; S.ai.card = el.value === 'builtin' ? BUILTIN_CARD : el.value === 'sam' ? SAM_CARD : null; if (el.value === 'sam') samCheck(); if (el.value !== 'sam' && S.tool === 'aiclick') S.tool = 'pan'; scheduleRender(); },
+  'viewer-bg': function (el) { if (VIEWER_BG[el.value]) { DISPLAY.viewerBg = el.value; Inspector.draw(); scheduleRender(); } },
   'ai-reviewed': function (el) { S.ai.reviewed = el.checked; scheduleRender(); },
   'ai-threshold': function (el) { S.ai.threshold = parseFloat(el.value) || 0; scheduleRender(); },
   'ai-manifest': async function (el) { var f = el.files && el.files[0]; el.value = ''; if (!f) return; S.ai.manifestError = null; S.ai.reviewed = false; try { if (f.size > 1048576) throw new Error('Manifest larger than 1 MB.'); var m = JSON.parse(await f.text()), errs = validateManifest(m); if (errs.length) throw new Error(errs.join(' ')); S.ai.model = m; S.ai.card = normCard(m, 'local-browser'); S.ai.session = null; } catch (e) { S.ai.model = null; S.ai.card = null; S.ai.manifestError = e && e.message && !/JSON/.test(e.message) ? e.message : 'Invalid JSON.'; } scheduleRender(); },

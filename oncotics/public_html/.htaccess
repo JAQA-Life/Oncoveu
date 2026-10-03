@@ -8,6 +8,7 @@ AddType image/webp .webp
 AddType text/plain .txt
 AddType application/wasm .wasm
 AddType text/javascript .mjs
+  AddType application/octet-stream .onnx
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -43,7 +44,7 @@ AddType text/javascript .mjs
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
   # Self-hosted globe (CesiumJS) and inference runtime (ONNX Runtime Web) assets
-  <FilesMatch "\.(wasm|mjs|glb|ktx2|json)$">
+  <FilesMatch "\.(wasm|mjs|glb|ktx2|json|onnx)$">
     Header set Cache-Control "public, max-age=2592000"
   </FilesMatch>
   <FilesMatch "\.(css|js|png|jpg|jpeg|webp|svg|ico|webmanifest)$">

@@ -1,7 +1,26 @@
 # Imaging Workbench: model manifest and inference exchange formats
 
-The Imaging Workbench (`/imaging/`) never runs AI automatically, never ships a model, and never sends
-images to Oncotics. A user who wants experimental AI suggestions supplies one of the following:
+The Imaging Workbench (`/imaging/`) never runs AI automatically and never sends images to Oncotics.
+Every run is an explicit click. The AI modes are:
+
+- **Automatic detection, built-in.** A rule-based computer-vision detector in the page code (no
+  download).
+  - It works on the displayed, window/levelled image at up to 256 px: difference-of-Gaussians blob
+    detection, then connected components.
+  - It filters regions by size, compactness and aspect ratio, and ignores regions touching the edge.
+  - The score is relative local contrast and compactness.
+  - It is not trained AI.
+- **AI detection & segmentation, SAM ViT-B (self-hosted).** Meta AI's Segment Anything Model
+  (Apache-2.0), the same ONNX export the OHIF Viewer uses.
+  - `oncotics/scripts/fetch-ai-models.sh` downloads it into `public_html/assets/models/sam-b/`
+    (`encoder.onnx`, `decoder.onnx`). The page only loads it from this site.
+  - It runs in ONNX Runtime Web: WebGPU when available, otherwise WebAssembly.
+  - "Detect & segment" sends each built-in candidate's box to SAM. "AI click-to-segment" sends the
+    clicked point. The score is SAM's predicted IoU.
+  - SAM is trained on natural images, not medical images.
+  - If the files are not deployed, the panel says so and nothing falls back to another host.
+
+A user can also supply their own model:
 
 - **Local browser model (preferred).** An `.onnx` file plus a manifest JSON
   (`oncotics-model-manifest/1`). Both are read in browser memory, and inference runs in ONNX Runtime Web

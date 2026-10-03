@@ -433,8 +433,8 @@ PAGES = [
 ]
 
 def build():
-    # Rebuild generated files but keep deploy-time vendor assets (self-hosted OHIF, globe, inference runtime).
-    KEEP = {os.path.join('assets', 'ohif'), os.path.join('assets', 'globe'), os.path.join('assets', 'ort')}
+    # Rebuild generated files but keep deploy-time vendor assets (self-hosted OHIF, globe, inference runtime, AI models).
+    KEEP = {os.path.join('assets', 'ohif'), os.path.join('assets', 'globe'), os.path.join('assets', 'ort'), os.path.join('assets', 'models')}
     os.makedirs(OUT, exist_ok=True)
     for name in os.listdir(OUT):
         fp = os.path.join(OUT, name)

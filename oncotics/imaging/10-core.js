@@ -91,6 +91,8 @@ var REGISTRY = {
     { id: 'local_dicom', name: 'Local DICOM files', mode: 'memory-only', note: 'Parsed in browser memory; uncompressed and baseline-JPEG transfer syntaxes in the Inspector; other syntaxes in OHIF.' },
     { id: 'local_raster', name: 'Local PNG / JPEG / WebP / BMP / TIFF*', mode: 'memory-only', note: 'Decoded by the browser; file metadata (EXIF/GPS) is never read and is dropped from exports. *TIFF only where the browser decodes it.' },
     { id: 'local_model', name: 'Local ONNX model (user-loaded)', mode: 'ai-derived-optional', note: 'Runs in a WebAssembly runtime self-hosted at /assets/ort/. No network request for inference.' },
+    { id: 'builtin_detector', name: 'Built-in candidate detector (page code)', mode: 'in-browser, user-triggered', note: 'Rule-based computer vision; no download and no network request.' },
+    { id: 'sam_vit_b', name: 'Segment Anything Model (SAM) ViT-B, Meta AI (Apache-2.0)', mode: 'self-hosted on this site, user-triggered', note: 'Model files served from /assets/models/sam-b/ when deployed; runs in this browser (WebGPU or WebAssembly). Images never leave the browser.' },
     { id: 'user_inference', name: 'User-supplied inference endpoint', mode: 'ai-derived-optional', note: 'Disabled by default; separate consent; direct browser → endpoint; provider may log/store.' },
     { id: 'tcia', name: 'The Cancer Imaging Archive (TCIA)', mode: 'linkout', url: 'https://www.cancerimagingarchive.net/browse-collections/' },
     { id: 'nci_idc', name: 'NCI Imaging Data Commons', mode: 'linkout', url: 'https://portal.imaging.datacommons.cancer.gov/explore/' },
@@ -183,3 +185,7 @@ function freshState() {
   };
 }
 var S = freshState();
+// Display preferences (memory only; not image data, so Clear Session keeps them).
+var DISPLAY = { theme: 'system', viewerBg: 'black' };
+var VIEWER_BG = { black: ['Black', '#05080F'], dark: ['Dark gray', '#1F2937'], gray: ['Mid gray', '#64748B'], light: ['Light gray', '#E2E8F0'], white: ['White', '#FFFFFF'] };
+function viewerBgIsLight() { return DISPLAY.viewerBg === 'light' || DISPLAY.viewerBg === 'white'; }
