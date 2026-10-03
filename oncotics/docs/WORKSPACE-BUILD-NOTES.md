@@ -84,7 +84,7 @@ site build copies that file to `/precision-oncology-workspace/`.
   - These are evidence-navigation views only. They do not give schedules, safety rankings, or vaccine,
     fertility, pregnancy or contraception advice.
 
-## Free-text concepts and per-module search
+## Free-text concepts
 - `10e-concept-fanout.js`: a query read as a **Free-text clinical concept** goes to every live source
   that has a free-text search (30 rows; `CX_ENTRIES`).
   - These are: ClinicalTrials.gov, Europe PMC, CIViC, OLS, OncoTree, NCI GDC, openFDA (label
@@ -121,18 +121,6 @@ site build copies that file to `/precision-oncology-workspace/`.
   4. Everything else.
 - Every module reflects a free-text concept with its own slice of the fan-out (`CX_MODULES`). The rail
   and the Overview module counts include those records.
-- Per-module search (`10f-module-search.js`; `MOD_SEARCH` in `10-mod-a.js`) is **independent of the
-  common search**.
-  - Each data module's box queries only that module's live sources (`MS_JOBS`). For example, Trials
-    calls only ClinicalTrials.gov; Drug Intelligence calls openFDA, RxNorm, ChEMBL, PubChem and DGIdb;
-    Biology calls the gene, protein and pathway sources.
-  - Results show inside that module only. The query is read with the module's preferred types (typed
-    loaders such as FDA labels for a drug reading) and falls back to free-text searches.
-  - It never changes the common query, its interpretation, the Overview or other modules. A common
-    search does not clear it.
-  - State lives in `State.ms`, memory only, with its own AbortController. "Clear this search" or
-    Clear Session wipes it.
-  - The PHI guard applies.
 
 ## CSP
 - `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'`. `'wasm-unsafe-eval'` is needed only for

@@ -191,7 +191,7 @@ function runSearch(term, opts) {
   } else if (I.needsConfirm) {
     // Ambiguous between specific readings: show candidates, query nothing until the user chooses.
     startGeneration();
-    State.entity = null; State.ctx = null; State.interp = I; State.interpModule = opts.module && opts.module !== 'overview' ? opts.module : null;
+    State.entity = null; State.ctx = null; State.interp = I;
     startTypeProbes(chk.value);   // score every entity type while the user chooses
     $('#ow-q').value = chk.value;
     setModule('overview', { quiet: true });
@@ -236,7 +236,7 @@ function clearSession(silent) {
   Net.cancelAll(); Net.clearMemo();
   State.gen++; State.searchCtrl = null; State.entity = null; State.ctx = null;
   State.slots = new Map(); State.records = new Map(); State.failed.clear(); State.board = []; State.compare = {}; State.ui = {};
-  State.prefs = { theme: 'system', density: 'comfortable', hiddenModules: new Set(), disabledSources: new Set() }; State.keys = { openfda: '', s2: '', oncokb: '' }; State.interp = null; State.interpModule = null; msClearAll();
+  State.prefs = { theme: 'system', density: 'comfortable', hiddenModules: new Set(), disabledSources: new Set() }; State.keys = { openfda: '', s2: '', oncokb: '' }; State.interp = null;
   resetGlobeState(); resetMMState();
   State.nav = []; State.navIndex = -1; State.lastFetch = null; State.conflicts = [];
   Layers.drawer = null; Layers.modal = null; Narr = null; clearDrafts();
@@ -491,14 +491,6 @@ function readAdv() {
   return { res: res, v: v };
 }
 var SUBMITS = {
-  // Per-module search (10f): independent of the common search; only this module's live sources.
-  'mod-search': function (f) {
-    var id = f.getAttribute('data-mod'), inp = f.querySelector('input[name="q"]'); if (!MOD_SEARCH[id] || !inp) return;
-    var term = inp.value.trim(); if (!term) { inp.focus(); return; }
-    var chk = checkInput(term);
-    if (!chk.ok) { inp.value = ''; toast(PHI_MESSAGE); announce(PHI_MESSAGE, true); return; }
-    msRun(id, chk.value);
-  },
 
   'evidence-filters': function (f) { var e = evidenceFilters(); var sv = function (id) { var el = $('#' + id); return el ? el.value.trim() : ''; };
     e.et = sv('ev-et') || null; e.sg = sv('ev-sg') || null; e.lv = sv('ev-lv') || null; e.st = sv('ev-st') || 'ACCEPTED'; e.th = sv('ev-th') || null; e.dz = sv('ev-dz') || null; e.ds = sv('ev-ds') || null;
@@ -540,7 +532,7 @@ var CHANGES = {
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
 Object.assign(ACTIONS, {
-  'interp-use': function (el) { var c = interpCand(el); if (c && c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: State.interpModule || undefined }); return; } if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
+  'interp-use': function (el) { var c = interpCand(el); if (c && c.derivedType) { runSearch(c.normalized, { type: c.derivedType }); return; } if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key') }); },
   'interp-search': function (el) { var c = interpCand(el); if (!c) return; if (c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: MOD[c.module] ? c.module : 'overview' }); return; } runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
   'interp-refine': function () { var q = $('#ow-q'); if (q) { q.focus(); q.select(); } announce('Edit the query in the search box and press Explore.'); },
   'interp-sources': function (el) {
@@ -551,7 +543,6 @@ Object.assign(ACTIONS, {
   'interp-module': function (el) { var c = interpCand(el); if (!c) return; if (State.interp.selectedKey === c.key && State.ctx) setModule(c.module, { focus: true }); else if (c.derivedType) runSearch(c.normalized, { type: c.derivedType, module: c.module }); else runSearch(State.interp.query, { pick: c.key, module: c.module }); },
   'interp-export': function () { var x = interpExport(); if (!x) { toast('No interpretation yet.'); return; } exportWarn('search interpretation (JSON)').then(function (ok) { if (ok) download(CONFIG.exportNames.interpretation + '.json', 'application/json', JSON.stringify({ metadata: exportMeta(['Oncotics interpretation engine']), interpretation: x }, null, 2)); }); },
   'interp-help': function () { openModal('How interpretation confidence works', interpHelp); },
-  'ms-clear': function (el) { msClear(el.getAttribute('data-mod')); var i = $('#ow-ms-' + el.getAttribute('data-mod')); if (i) { i.value = ''; i.focus(); } },
   // ---- Globe
   'globe-view': function (el) { GlobeState.view = el.getAttribute('data-view'); scheduleRender(); },
   'globe-reset': function () { if (Globe.engine) Globe.engine.reset(); },

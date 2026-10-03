@@ -22,36 +22,9 @@ var MODULE_INFO = [
   ['session-privacy', 'Session & Privacy', 'lock', 'Privacy model, legal notices, optional keys and session controls.']
 ];
 function modMeta(id) { var m = MODULE_INFO.find(function (x) { return x[0] === id; }); return { id: m[0], label: m[1], icon: m[2], desc: m[3] }; }
-// Per-module search: every data module has its own, independent search box (see 10f-module-search.js).
-// It queries only that module's live sources, shows the results inside the module and never changes
-// the common search. `prefer` is the order of readings the module tries before falling back to free text.
-var MOD_SEARCH = {
-  'clinical-evidence': { ph: 'Gene, variant, therapy or disease (e.g. KRAS G12C)', prefer: ['variant', 'gene', 'drug', 'disease'] },
-  'trials': { ph: 'Condition, drug, gene or NCT ID (e.g. NCT02296125)', prefer: ['nct', 'regid', 'disease', 'drug', 'gene', 'variant'] },
-  'drug-intelligence': { ph: 'Generic or brand name (e.g. osimertinib, Tagrisso)', prefer: ['drug', 'rxcui'] },
-  'vaccines-cancer-immunization': { ph: 'Vaccine or immunotherapy (e.g. HPV vaccine, sipuleucel-T)', prefer: ['vaccine'] },
-  'device-intelligence': { ph: 'Device, test, 510(k)/PMA number (e.g. K123456)', prefer: ['device'] },
-  'onco-fertility': { ph: 'Topic or therapy (e.g. fertility preservation, cyclophosphamide)', prefer: ['fertility', 'drug'] },
-  'biology': { ph: 'Gene, variant, rsID, HGVS, UniProt or Ensembl ID', prefer: ['gene', 'variant', 'rsid', 'hgvs', 'uniprot', 'ensembl'] },
-  'literature': { ph: 'Topic, PMID or DOI', prefer: ['pmid', 'doi', 'concept', 'disease', 'gene', 'drug'] },
-  'expert-knowledge': { ph: 'Gene or variant (e.g. BRAF V600E)', prefer: ['variant', 'gene'] },
-  'relationships': { ph: 'Any concept to explore relationships', prefer: [] },
-  'global-coverage': { ph: 'Any concept to check coverage', prefer: [] },
-  'comparison': null,
-  'advanced-query': null, 'session-board': null, 'coverage-console': null, 'session-privacy': null, 'overview': null
-};
-function moduleSearch(id) {
-  var cfg = MOD_SEARCH[id]; if (!cfg) return '';
-  var m = modMeta(id), M = State.ms && State.ms[id], v = M ? M.q : '', fid = 'ow-ms-' + id, n = msJobsFor(id, null).length;
-  return H`<form class="ow-modsearch" role="search" data-submit="mod-search" data-mod="${id}" aria-label="Search in ${m.label}" autocomplete="off">
-    <label for="${fid}">${icon('search')}<span>Search in ${m.label}</span></label>
-    <input id="${fid}" name="q" type="search" maxlength="200" spellcheck="false" autocomplete="off" placeholder="${cfg.ph}" value="${v}">
-    <button type="submit" class="ow-btn ow-btn-primary ow-btn-sm">Search</button>
-    <span class="ow-subtle ow-small">Independent of the common search: queries only ${m.label}'s live sources (${n}+) and shows the results here. Do not enter patient-identifying information.</span></form>${safeRender(function () { return moduleSearchResults(id); }, m.label + ' search results')}`;
-}
 function moduleHead(id, extra) {
   var m = modMeta(id);
-  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}${id !== 'overview' ? safeRender(function () { return conceptModulePanel(id); }, 'Free-text concept results') : ''}`;
+  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${id !== 'overview' ? safeRender(function () { return conceptModulePanel(id); }, 'Free-text concept results') : ''}`;
 }
 function slotTotal(key, field) { var s = slot(key); if (s.status === 'ok' && s.data) return field ? get(s.data, field) : (s.data.total != null ? s.data.total : arr(s.data.items).length); if (s.status === 'empty') return 0; return null; }
 function slotMark(key) { var s = slot(key); return { idle: 'not loaded', loading: 'loading…', error: 'failed', unavailable: 'unavailable', ratelimited: 'rate-limited' }[s.status] || null; }
