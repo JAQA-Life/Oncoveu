@@ -574,8 +574,13 @@ def build_lung(out, offline, zoo):
         gb, gs = P3.lung_detect(psize, cm, bm, list(img.shape), cells, A, weights, xclip, sthresh, params['topkPerLevel'], params['nmsThresh'], params['detectionsPerImage'])
         n = min(len(rb), len(gb), 50)
         o1, o2 = np.argsort(-rs, kind='stable')[:n], np.argsort(-gs, kind='stable')[:n]
-        db = float(np.max(np.abs(rb[o1] - gb[o2]))) if n else 0.0
         ds = float(np.max(np.abs(rs[o1] - gs[o2]))) if n else 0.0
+        # boxes with (near-)equal scores can come out in either order: match each MONAI box to the
+        # closest browser-pipeline box among those with the same score
+        db = 0.0
+        for i in o1:
+            cand = np.where(np.abs(gs - rs[i]) <= 5e-3)[0]
+            db = max(db, float(np.min(np.max(np.abs(gb[cand] - rb[i]), axis=1))) if len(cand) else 1e9)
         print('[lung] %s: MONAI %d boxes, browser pipeline %d boxes; top-%d |box| = %.2e voxel, |score| = %.2e' % (tag, len(rb), len(gb), n, db, ds))
         if abs(len(rb) - len(gb)) > max(2, 0.02 * len(rb)) or db > 0.25 or ds > 5e-3:
             sys.exit('Lung pipeline verification failed (%s)' % tag)

@@ -73,7 +73,13 @@ async function lungStage(name, pick) {
   console.log('lung ' + name + ': MONAI ' + lungRef.boxes.length + ' boxes (windowed: ' + lungRef.windowed + ', size ' + lungRef.size.join('x') + '); browser shows the top ' + lung.length);
   if (lung.length < Math.min(50, lungRef.boxes.length)) fail('browser returned fewer lung boxes than MONAI (' + name + ')');
   let db = 0, ds = 0;
-  for (let i = 0; i < n; i++) { ds = Math.max(ds, Math.abs(lung[i].score - lungRef.scores[i])); for (let q = 0; q < 6; q++) db = Math.max(db, Math.abs(lung[i].box[q] - lungRef.boxes[i][q])); }
+  for (let i = 0; i < n; i++) {
+    ds = Math.max(ds, Math.abs(lung[i].score - lungRef.scores[i]));
+    // near-equal scores can come out in either order: match each MONAI box to the closest browser box with the same score
+    let best = 1e9;
+    for (const c of lung) { if (Math.abs(c.score - lungRef.scores[i]) > 0.005) continue; let m = 0; for (let q = 0; q < 6; q++) m = Math.max(m, Math.abs(c.box[q] - lungRef.boxes[i][q])); best = Math.min(best, m); }
+    db = Math.max(db, best);
+  }
   console.log('lung ' + name + ' top-' + n + ': max |box| ' + db.toFixed(3) + ' voxel, max |score| ' + ds.toFixed(5));
   for (let i = 0; i < Math.min(3, n); i++) console.log('  #' + (i + 1) + ' browser ' + lung[i].score.toFixed(4) + ' [' + lung[i].box.map(v => v.toFixed(1)).join(', ') + ']  MONAI ' + lungRef.scores[i].toFixed(4) + ' [' + lungRef.boxes[i].map(v => v.toFixed(1)).join(', ') + ']');
   if (db > 0.5 || ds > 0.005) fail('lung results differ from MONAI (' + name + ')');
