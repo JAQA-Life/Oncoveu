@@ -97,8 +97,8 @@ The Workbench's "Trained cancer AI models" mode uses model packs, one folder per
 
 | Folder | Model (licence) | Input | Output | Size |
 |---|---|---|---|---|
-| `cxr-xrv-densenet121` | TorchXRayVision DenseNet-121 (Apache-2.0) | frontal chest X-ray | 18 findings incl. Mass, Nodule, Lung Lesion + activation maps | ~30 MB |
-| `path-camelyon16-resnet18` | MONAI pathology tumour detection (Apache-2.0, Camelyon16) | H&E tiles | tumour heatmap + regions | ~45 MB |
+| `cxr-xrv-densenet121` | TorchXRayVision DenseNet-121 (Apache-2.0) | frontal chest X-ray | 18 findings incl. Mass, Nodule, Lung Lesion + activation maps | ~27 MB |
+| `path-camelyon16-resnet18` | MONAI pathology tumour detection (Apache-2.0, Camelyon16) | H&E tiles | tumour heatmap + regions | ~43 MB |
 | `brain-mri-brats-segresnet` | MONAI BraTS brain tumour segmentation, SegResNet 3D (Apache-2.0) | 4 co-registered MRI volumes: T1c, T1, T2, FLAIR | tumour core / whole tumour / enhancing tumour masks + volumes (mL) | ~18 MB |
 | `lung-ct-luna16-retinanet` | MONAI lung nodule detection, RetinaNet 3D (Apache-2.0, LUNA16) | chest CT series or NIfTI | 3D nodule candidate boxes + size | ~80 MB |
 
@@ -114,7 +114,7 @@ pipeline (pre-processing, sliding window, detector post-processing).
    also click **Run workflow**. A full run takes about an hour (it downloads four models and tests
    them in a browser).
 3. When it is green, open the run and download the artifact **oncotics-ai-model-packs** (a zip,
-   about 170 MB). Artifacts are kept for 30 days; run the workflow again to get a fresh one.
+   about 160 MB). Artifacts are kept for 30 days; run the workflow again to get a fresh one.
 4. Unzip it. You get the four folders above.
 5. Upload them to `public_html/assets/models/`, keeping each folder with all its files:
    - **FTP (recommended for the 80 MB lung model):** hPanel → **Files → FTP Accounts** shows the
