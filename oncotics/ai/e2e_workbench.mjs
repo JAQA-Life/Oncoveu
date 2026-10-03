@@ -5,7 +5,8 @@ import fs from 'fs';
 const [base, image, refPath] = process.argv.slice(2);
 const ref = JSON.parse(fs.readFileSync(refPath, 'utf8'));
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+// bypassCSP only lets the test harness evaluate its checks; the page's own CSP is unchanged in production.
+const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, bypassCSP: true });
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.goto(base + '/imaging/index.html');
 const W = ms => page.waitForTimeout(ms);
