@@ -165,6 +165,7 @@
 .oncotics-imaging .oi-seg-b:first-of-type { border-radius: 8px 0 0 8px; } .oncotics-imaging .oi-seg-b:last-of-type { border-radius: 0 8px 8px 0; }
 .oncotics-imaging .oi-seg-b[aria-pressed="true"] { background: rgba(20,184,166,.22); border-color: var(--oi-teal); color: var(--oi-strong); }
 .oncotics-imaging .oi-select-sm { min-height: 30px; padding: 4px 8px; font-size: .8rem; width: auto; }
+.oncotics-imaging .oi-pack { padding: 6px 0; border-top: 1px solid var(--oi-border); } .oncotics-imaging .oi-pack:first-of-type { border-top: 0; }
 </style>
 <main id="oncotics-imaging-workbench" class="oncotics-imaging" aria-label="Oncotics Imaging Workbench">
   <a class="oi-skip" href="#oi-main">Skip to imaging content</a>
@@ -906,14 +907,14 @@ async function runInference() {
   if (S.ai.mode === 'remote' && (!S.ai.remote.enabled || !S.consent.remote)) { openConsent('remote'); return; }
   S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running experimental inference…');
   try {
-    var out = S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
+    var out = S.ai.mode === 'packs' ? await runPack() : S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
     out.forEach(function (r) { r.id = nextAiId(); });
     S.ai.results = S.ai.results.filter(function (r) { return r.imageId !== S.current || r.accepted; }).concat(out);
     S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'remote' ? 'user-endpoint' : 'local-browser' };
     announce('Inference finished: ' + out.length + ' AI suggestions (experimental, not a diagnosis).');
   } catch (e) {
     var k = e && e.message;
-    S.ai.error = k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
+    S.ai.error = k === 'pack-unavailable' ? ((packSel() && packSel().error) || 'The selected AI model pack is not available on this site.') : k === 'too-large' ? 'This image is too large for patch scoring in the browser (over 1,600 patches). Upload a smaller tile or region.' : k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
   } finally { S.ai.running = false; scheduleRender(); }
 }
 function scoreLabel(s) { return s == null ? 'not reported' : s >= 0.9 ? 'Very high' : s >= 0.75 ? 'High' : s >= 0.5 ? 'Medium' : 'Low'; }
@@ -1112,6 +1113,132 @@ async function aiClickAt(p) {
     else { var res = samResult(img, m, r.iou, 'AI segmentation at your click'); res.id = nextAiId(); S.ai.results.push(res); S.ai.lastRun = { at: isoNow(), imageId: S.current, count: 1, runtime: 'local-browser' }; announce('AI suggestion ' + res.id + ' added (experimental, not a diagnosis).'); }
   } catch (e) { S.ai.error = e && e.message === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : 'AI segmentation failed on this image.'; }
   finally { S.ai.running = false; scheduleRender(); }
+}
+/* ====================================================================
+   TRAINED CANCER AI MODEL PACKS (self-hosted; schema oncotics-model-pack/1)
+   Folders in /assets/models/<pack-id>/ produced by oncotics/ai/build_model_packs.py
+   (GitHub Actions "Oncotics AI model packs"): model.onnx converted from the
+   authors' official weights + pack.json (model card, labels, pre/post-processing,
+   SHA-256, verification against the original PyTorch model).
+     cxr-xrv-densenet121       chest X-ray, 18 findings incl. Mass / Nodule / Lung Lesion + activation maps
+     path-camelyon16-resnet18  H&E patch tumour detector (Camelyon16) -> tumour heatmap + regions
+   Runs in ONNX Runtime Web (WebAssembly) in this browser; images never leave it.
+   Never automatic: the user selects a pack, reviews its card and presses Run.
+   ==================================================================== */
+var PACK_IDS = ['cxr-xrv-densenet121', 'path-camelyon16-resnet18'];
+var PACK_BASE = '/assets/models/';
+var PACKS = { checked: false, map: {} };
+function packsCheck() {
+  if (PACKS.checked) return; PACKS.checked = true;
+  PACK_IDS.forEach(function (id) {
+    var e = PACKS.map[id] = { id: id, status: 'checking' };
+    if (location.protocol === 'file:') { e.status = 'missing'; return; }
+    fetch(PACK_BASE + id + '/pack.json', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { if (!r.ok || /text\/html/i.test(r.headers.get('content-type') || '')) throw new Error('missing'); return r.json(); }).then(function (p) {
+      if (!p || p.schema !== 'oncotics-model-pack/1' || p.id !== id || !p.card || !p.model) throw new Error('invalid');
+      e.pack = p; e.card = normCard({ card: p.card, output: { type: p.task === 'cxr-classification' ? 'classification' : 'heatmap' } }, 'local-browser'); e.status = 'available';
+    }).catch(function () { e.status = 'missing'; }).then(scheduleRender);
+  });
+}
+function packSel() { return S.ai.pack ? PACKS.map[S.ai.pack] : null; }
+async function packLoad(id) {
+  var e = PACKS.map[id]; if (!e || !e.pack || e.status === 'loading' || e.status === 'ready') return;
+  e.status = 'loading'; e.error = null; scheduleRender(); announce('Loading ' + e.pack.card.name + ' from this site…');
+  try {
+    var ort = await loadOrt();
+    var r = await fetch(PACK_BASE + id + '/' + e.pack.model, { credentials: 'same-origin' }); if (!r.ok) throw new Error('missing');
+    var buf = await r.arrayBuffer();
+    if (e.pack.sha256 && window.crypto && crypto.subtle) {
+      var hex = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      if (hex !== e.pack.sha256) throw new Error('hash');
+    }
+    e.session = await ort.InferenceSession.create(new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    e.ort = ort; e.status = 'ready'; announce(e.pack.card.name + ' loaded.');
+  } catch (err) {
+    e.status = 'error';
+    e.error = err.message === 'hash' ? 'model.onnx does not match the checksum in pack.json (corrupted or wrong upload). Upload the pack folder again.' : err.message === 'missing' ? 'model.onnx is missing next to pack.json.' : err.message === 'runtime-unavailable' ? 'The inference runtime is not deployed on this site (/assets/ort/).' : 'This browser could not load the model.';
+  }
+  scheduleRender();
+}
+function sig(z) { return 1 / (1 + Math.exp(-z)); }
+function packResult(e, img, x) { return Object.assign({ imageId: img.id, frame: S.frame, uncertainty: null, provenance: 'AI-derived experimental inference', calibrated: 'no', model: e.pack.card.name + ' · ' + e.pack.card.version }, x); }
+
+// ---- Chest X-ray: 18 findings + class-activation maps
+async function runCxrPack(e, img) {
+  var P = e.pack, I = P.input, N = I.width, side = Math.min(img.w, img.h), sx = Math.floor((img.w - side) / 2), sy = Math.floor((img.h - side) / 2);
+  var c = document.createElement('canvas'); c.width = N; c.height = N; var g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  if (I.centerCrop) g.drawImage(Inspector.display(img), sx, sy, side, side, 0, 0, N, N); else { g.drawImage(Inspector.display(img), 0, 0, N, N); sx = 0; sy = 0; }
+  var d = g.getImageData(0, 0, N, N).data; c.width = c.height = 0;
+  var x = new Float32Array(N * N); for (var i = 0; i < N * N; i++) x[i] = (0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]) * I.scale + I.offset;
+  var feeds = {}; feeds[I.name] = new e.ort.Tensor('float32', x, [1, 1, N, N]);
+  var out = await e.session.run(feeds), lg = out[P.output.logits].data, cam = out[P.output.cam], K = P.labels.length, ch = cam.dims[2], cw = cam.dims[3];
+  var res = [], scores = [];
+  for (var k = 0; k < K; k++) {
+    if (!P.labels[k]) continue;
+    var p = sig(lg[k]), t = P.opThresholds ? P.opThresholds[k] : null, s = t == null ? p : (p < t ? p / (2 * t) : 1 - (1 - p) / (2 * (1 - t)));
+    scores.push([k, s]); res.push(packResult(e, img, { type: 'classification', label: P.labels[k] + (P.focusLabels && P.focusLabels.indexOf(P.labels[k]) >= 0 ? ' (oncology-relevant finding)' : ''), score: s }));
+  }
+  // Activation maps: every oncology-relevant finding at/above the operating point, plus the top finding.
+  scores.sort(function (a, b) { return b[1] - a[1]; });
+  var want = scores.filter(function (q) { return q[1] >= 0.5 && P.focusLabels && P.focusLabels.indexOf(P.labels[q[0]]) >= 0; });
+  if (scores.length && want.every(function (q) { return q[0] !== scores[0][0]; })) want.push(scores[0]);
+  var mw = 96, mh = Math.max(8, Math.round(96 * img.h / img.w)), key = 'x' + Date.now();
+  want.forEach(function (q, n) {
+    var k2 = q[0], off = k2 * ch * cw, mn = Infinity, mx = -Infinity, j;
+    for (j = 0; j < ch * cw; j++) { var v = cam.data[off + j]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    if (!(mx - mn > 1e-6)) return;
+    var prob = new Float32Array(mw * mh);
+    for (var gy = 0; gy < mh; gy++) for (var gx = 0; gx < mw; gx++) {
+      var X = (gx + 0.5) / mw * img.w, Y = (gy + 0.5) / mh * img.h; if (X < sx || Y < sy || X > sx + side || Y > sy + side) continue;
+      var u = (X - sx) / side * cw - 0.5, w = (Y - sy) / side * ch - 0.5, u0 = Math.max(0, Math.min(cw - 1, Math.floor(u))), w0 = Math.max(0, Math.min(ch - 1, Math.floor(w))), u1 = Math.min(cw - 1, u0 + 1), w1 = Math.min(ch - 1, w0 + 1), fu = Math.max(0, Math.min(1, u - u0)), fw = Math.max(0, Math.min(1, w - w0));
+      var val = (cam.data[off + w0 * cw + u0] * (1 - fu) + cam.data[off + w0 * cw + u1] * fu) * (1 - fw) + (cam.data[off + w1 * cw + u0] * (1 - fu) + cam.data[off + w1 * cw + u1] * fu) * fw;
+      prob[gy * mw + gx] = (val - mn) / (mx - mn);
+    }
+    res.push(packResult(e, img, { type: 'heatmap', label: 'Activation map: ' + P.labels[k2] + ' (where the model looked; not a lesion outline)', score: q[1], mask: { key: key + n, w: mw, h: mh, prob: prob, data: new Uint8Array(mw * mh), bbox: [sx, sy, sx + side, sy + side] } }));
+  });
+  return res.sort(function (a, b) { return (b.type === 'heatmap') - (a.type === 'heatmap') || b.score - a.score; });
+}
+
+// ---- Pathology: patch tumour scores -> heatmap + regions
+async function runPathPack(e, img) {
+  var P = e.pack, I = P.input, ps = I.patch, cols = Math.ceil(img.w / ps), rows = Math.ceil(img.h / ps), N = cols * rows;
+  if (N > 1600) throw new Error('too-large');
+  var cv = Inspector.display(img), full = cv.getContext('2d').getImageData(0, 0, img.w, img.h).data, probs = new Float32Array(N), B = 8, plane = ps * ps;
+  for (var b0 = 0; b0 < N; b0 += B) {
+    var nb = Math.min(B, N - b0), x = new Float32Array(nb * 3 * plane);
+    for (var j = 0; j < nb; j++) {
+      var t = b0 + j, cx = t % cols, cy = (t / cols) | 0, base = j * 3 * plane;
+      for (var py = 0; py < ps; py++) for (var px = 0; px < ps; px++) {
+        var X = cx * ps + px, Y = cy * ps + py, inside = X < img.w && Y < img.h, o = (Y * img.w + X) * 4, q = py * ps + px;
+        x[base + q] = (inside ? full[o] : 255) * I.scale + I.offset; x[base + plane + q] = (inside ? full[o + 1] : 255) * I.scale + I.offset; x[base + 2 * plane + q] = (inside ? full[o + 2] : 255) * I.scale + I.offset;
+      }
+    }
+    var feeds = {}; feeds[I.name] = new e.ort.Tensor('float32', x, [nb, 3, ps, ps]);
+    var out = await e.session.run(feeds), lg = out[P.output.logit].data;
+    for (j = 0; j < nb; j++) probs[b0 + j] = sig(lg[j]);
+    if (b0 % (B * 10) === 0) announce('Pathology AI: ' + Math.min(N, b0 + nb) + ' of ' + N + ' patches scored…');
+  }
+  var mw = Math.min(256, cols * 4), mh = Math.min(256, rows * 4), cellTile = new Int32Array(mw * mh), heat = new Float32Array(mw * mh), maxP = 0;
+  for (var gy = 0; gy < mh; gy++) for (var gx = 0; gx < mw; gx++) {
+    var X2 = (gx + 0.5) / mw * img.w, Y2 = (gy + 0.5) / mh * img.h, ti = Math.min(rows - 1, (Y2 / ps) | 0) * cols + Math.min(cols - 1, (X2 / ps) | 0);
+    cellTile[gy * mw + gx] = ti; heat[gy * mw + gx] = probs[ti];
+  }
+  for (var k = 0; k < N; k++) if (probs[k] > maxP) maxP = probs[k];
+  var key = 'p' + Date.now(), res = [];
+  res.push(packResult(e, img, { type: 'classification', label: 'Highest patch tumour score (' + N + ' patches of ' + ps + ' px)', score: maxP }));
+  res.push(packResult(e, img, { type: 'heatmap', label: 'Tumour heatmap (patch scores)', score: maxP, mask: { key: key + 'h', w: mw, h: mh, prob: heat, data: new Uint8Array(mw * mh), bbox: [0, 0, img.w, img.h] } }));
+  var bin = new Uint8Array(N); for (k = 0; k < N; k++) bin[k] = probs[k] >= 0.5 ? 1 : 0;
+  components(bin, cols, rows, 1).slice(0, 30).forEach(function (cmp, n) {
+    var inC = new Uint8Array(N), sum = 0; cmp.pixels.forEach(function (p) { inC[p] = 1; sum += probs[p]; });
+    var md = new Uint8Array(mw * mh); for (var z = 0; z < mw * mh; z++) if (inC[cellTile[z]]) md[z] = 1;
+    var bb = cmp.bbox;
+    res.push(packResult(e, img, { type: 'mask', label: 'Tumour-scored region (' + cmp.pixels.length + ' patch' + (cmp.pixels.length > 1 ? 'es' : '') + ')', score: sum / cmp.pixels.length, mask: { key: key + 'r' + n, w: mw, h: mh, data: md, bbox: [bb[0] * ps, bb[1] * ps, Math.min(img.w, bb[2] * ps), Math.min(img.h, bb[3] * ps)] } }));
+  });
+  return res;
+}
+async function runPack() {
+  var e = packSel(), img = curImg(); if (!e || !img) return [];
+  if (e.status !== 'ready') await packLoad(e.id); if (e.status !== 'ready') throw new Error('pack-unavailable');
+  return e.pack.task === 'cxr-classification' ? runCxrPack(e, img) : runPathPack(e, img);
 }
 
 /* ====================================================================
@@ -1428,6 +1555,7 @@ function panelAI() {
   var A = S.ai, img = curImg(), vis = aiVisible().filter(function (r) { return r.imageId === S.current; }), all = A.results.filter(function (r) { return r.imageId === S.current && !r.accepted; }), suppressed = all.length - vis.length;
   var modeSel = H`<fieldset class="oi-card"><legend class="oi-card-title">1 · Choose an inference source</legend>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="none" data-change="ai-mode" ${A.mode === 'none' ? raw('checked') : ''}><span><strong>None (default)</strong> — viewing, manual measurement and annotation only.</span></label>
+    <label class="oi-check"><input type="radio" name="oi-ai-mode" value="packs" data-change="ai-mode" ${A.mode === 'packs' ? raw('checked') : ''}><span><strong>Trained cancer AI models — self-hosted (recommended)</strong> — trained research models for chest X-ray findings (Mass, Nodule, Lung Lesion and 15 more) and H&E pathology tumour detection, run in your browser. The image never leaves it.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="builtin" data-change="ai-mode" ${A.mode === 'builtin' ? raw('checked') : ''}><span><strong>Automatic detection — built-in (instant, no download)</strong> — finds compact regions that stand out from their surroundings on the displayed image. Rule-based computer vision, not trained AI.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="sam" data-change="ai-mode" ${A.mode === 'sam' ? raw('checked') : ''}><span><strong>AI detection & segmentation — SAM ViT-B (self-hosted)</strong> — finds candidate regions, then outlines each with the Segment Anything AI model; or click any structure to segment it. Runs in your browser; the image never leaves it.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="local" data-change="ai-mode" ${A.mode === 'local' ? raw('checked') : ''}><span><strong>Local browser model (preferred)</strong> — an ONNX model and Oncotics model manifest you load from your device. No image leaves your browser.</span></label>
@@ -1443,6 +1571,12 @@ function panelAI() {
       <label class="oi-field"><span>Model name / id (optional)</span><input id="oi-ai-model" class="oi-input" value="${A.remote.model}" maxlength="80"></label>
       <p class="oi-subtle">Request: POST JSON {format:"oncotics-inference-exchange/1", image:{mime:"image/png", encoding:"base64", data, width, height}, modality, model}. Expected response: {model:{…card}, outputs:[{type, label, score, uncertainty?, box?[x0,y0,x1,y1 normalized], polygon?, point?}]}. Endpoint terms are unknown to Oncotics, so this mode is verify-only and off by default.</p>
       <div class="oi-card-foot"><button type="submit" class="oi-btn">${A.remote.enabled ? 'Update endpoint' : 'Enable this endpoint (requires consent)'}</button>${A.remote.enabled ? H`<button type="button" class="oi-btn" data-act="ai-remote-off">Disable and forget endpoint</button>` : ''}</div></form>`;
+  if (A.mode === 'packs') src = H`<fieldset class="oi-card"><legend class="oi-card-title">2 · Choose a trained model on this site</legend>
+      ${PACK_IDS.map(function (id) { var e = PACKS.map[id] || { status: 'checking' }, nm = e.pack ? e.pack.card.name : id;
+        return H`<div class="oi-pack"><label class="oi-check"><input type="radio" name="oi-ai-pack" value="${id}" data-change="ai-pack" ${S.ai.pack === id ? raw('checked') : ''} ${e.pack ? '' : raw('disabled')}><span><strong>${nm}</strong>${e.pack ? H` <span class="oi-subtle">· ${e.pack.card.modality.join(', ')} · ${num(e.pack.sizeBytes / 1048576, 0)} MB · ${e.pack.card.license}</span>` : ''}</span></label>
+          <div class="oi-small" style="margin-left:26px">${e.status === 'checking' ? H`<span class="oi-spinner"></span> Checking…` : e.status === 'missing' ? H`<span class="oi-subtle">Not deployed on this site (${PACK_BASE}${id}/).</span>` : e.status === 'available' ? H`<button type="button" class="oi-btn oi-btn-sm" data-act="pack-load" data-id="${id}">${icon('spark')}Load model</button>` : e.status === 'loading' ? H`<span class="oi-spinner"></span> Loading and checking the model…` : e.status === 'ready' ? badge('Loaded · checksum verified', 'teal') : notice('bad', e.error || 'Could not load.')}
+          ${e.pack && e.pack.notForUse ? notice('bad', 'TEST PACK built with untrained weights: outputs are meaningless.') : ''}</div></div>`; })}
+      ${PACK_IDS.every(function (id) { return PACKS.map[id] && PACKS.map[id].status === 'missing'; }) ? notice('warn', H`<strong>No trained model packs are deployed on this site yet.</strong> Site operators: download the “oncotics-ai-model-packs” zip produced by the GitHub Actions workflow “Oncotics AI model packs” and upload its folders to ${PACK_BASE}. See docs/DEPLOY-HOSTINGER.md.`) : ''}</fieldset>`;
   if (A.mode === 'builtin') src = H`<div class="oi-card"><div class="oi-card-title">2 · Built-in detector</div><p class="oi-small">Runs instantly on the displayed image (current window/level) at reduced resolution. Change the window/level to target soft tissue, lung or bone. No network request is made.</p></div>`;
   if (A.mode === 'sam') src = H`<div class="oi-card"><div class="oi-card-title">2 · AI model on this site</div>
       ${SAM.status === 'checking' || SAM.status === 'unknown' ? H`<p class="oi-row oi-small"><span class="oi-spinner"></span> Checking for the self-hosted AI model…</p>` : ''}
@@ -1453,7 +1587,8 @@ function panelAI() {
       ${SAM.status === 'error' ? notice('bad', SAM.error) : ''}</div>`;
   var card = A.card ? H`<div>${modelCardView(A.card)}<label class="oi-check" style="margin-top:8px"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I have reviewed the model card and limitations, and I understand outputs are experimental and not a diagnosis.</span></label></div>` : (A.mode === 'local' ? H`<p class="oi-subtle">The model card appears after a valid manifest is loaded.</p>` : A.mode === 'remote' ? H`<p class="oi-subtle">The endpoint’s model card (if it returns one) is shown after the first run; review it before relying on any output.</p>${A.remote.enabled ? H`<label class="oi-check"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I understand the endpoint’s outputs are experimental and not a diagnosis.</span></label>` : ''}` : '');
   var samOk = SAM.status === 'available' || SAM.status === 'ready';
-  var canRun = A.mode !== 'none' && A.reviewed && img && consentState() && !A.running && (A.mode === 'builtin' ? true : A.mode === 'sam' ? samOk : A.mode === 'local' ? (A.model && A.modelBytes) : (A.remote.enabled && S.consent.remote));
+  var pk = packSel(), packOk = !!(pk && (pk.status === 'available' || pk.status === 'ready'));
+  var canRun = A.mode !== 'none' && A.reviewed && img && consentState() && !A.running && (A.mode === 'packs' ? packOk : A.mode === 'builtin' ? true : A.mode === 'sam' ? samOk : A.mode === 'local' ? (A.model && A.modelBytes) : (A.remote.enabled && S.consent.remote));
   var results = H`<div class="oi-card"><div class="oi-card-title">4 · AI suggestions for the current image ${badge('AI suggestion', 'ai')}${badge('Experimental', 'warn')}${badge('Not a diagnosis', 'bad')}</div>
     <p class="oi-small">${TEXT.confidence} ${A.card && A.card.calibrated !== 'yes' ? H`<strong>Calibration: ${A.card.calibrated}.</strong> Scores may not correspond to frequencies.` : ''}</p>
     <label class="oi-row oi-small">Threshold <input type="range" min="0" max="1" step="0.01" value="${A.threshold}" data-change="ai-threshold" aria-label="Model score threshold"> <strong>${A.threshold.toFixed(2)}</strong> ${suppressed > 0 ? H`<span class="oi-subtle">· ${suppressed} lower-scoring suggestion(s) hidden by this threshold (not discarded)</span>` : ''}</label>
@@ -1464,7 +1599,7 @@ function panelAI() {
     ${notice('bad', H`<strong>${TEXT.aiWarn}</strong> ${TEXT.modelOut}`)}
     <div class="oi-grid-2" style="margin-top:10px">${notice('warn', H`<strong>Patients and caregivers:</strong> ${TEXT.patient}`)}${notice('warn', H`<strong>Clinicians:</strong> ${TEXT.clinician}`)}</div>
     <div class="oi-stack" style="margin-top:12px">${modeSel}${src}${A.mode !== 'none' ? H`<div class="oi-card"><div class="oi-card-title">3 · Review the model card, then run</div>${card}
-      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : A.mode === 'builtin' ? 'Run automatic detection on the current image' : A.mode === 'sam' ? 'Detect & segment with AI on the current image' : 'Run detection / inference on the current image'}</button>${A.mode === 'sam' ? H`<button type="button" class="oi-btn" data-act="tool" data-tool="aiclick" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" ${samOk && A.reviewed && img && consentState() ? '' : raw('disabled')}>${icon('scan')}${S.tool === 'aiclick' ? 'Click-to-segment is on: click the image' : 'AI click-to-segment'}</button>` : ''}<span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
+      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : A.mode === 'packs' ? (pk && pk.pack && pk.pack.task === 'pathology-patch' ? 'Run tumour detection on the current image' : 'Run chest X-ray AI on the current image') : A.mode === 'builtin' ? 'Run automatic detection on the current image' : A.mode === 'sam' ? 'Detect & segment with AI on the current image' : 'Run detection / inference on the current image'}</button>${A.mode === 'sam' ? H`<button type="button" class="oi-btn" data-act="tool" data-tool="aiclick" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" ${samOk && A.reviewed && img && consentState() ? '' : raw('disabled')}>${icon('scan')}${S.tool === 'aiclick' ? 'Click-to-segment is on: click the image' : 'AI click-to-segment'}</button>` : ''}<span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
       ${A.error ? notice('bad', A.error) : ''}</div>` : ''}
       ${S.images.size ? H`<div class="oi-card"><div class="oi-card-title">Current image</div>${inspectorPanel(false)}</div>` : ''}
       ${A.results.length || A.lastRun ? results : ''}</div>`;
@@ -1494,6 +1629,7 @@ function panelExport() {
 function panelModels() {
   return H`<h2>Model Cards & Limitations</h2>${notice('bad', H`<strong>${TEXT.modelOut}</strong>`)}${notice('info', TEXT.aiDerived)}${notice('warn', TEXT.community)}
     ${S.ai.card && S.ai.card !== BUILTIN_CARD && S.ai.card !== SAM_CARD ? H`<div style="margin-top:10px"><div class="oi-card-title">Model you loaded</div>${modelCardView(S.ai.card)}</div>` : ''}
+    ${(packsCheck(), PACK_IDS.filter(function (id) { return PACKS.map[id] && PACKS.map[id].card; }).map(function (id) { return H`<div class="oi-card-title" style="margin-top:12px">Trained model pack: ${PACKS.map[id].pack.card.name}</div>${modelCardView(PACKS.map[id].card)}${PACKS.map[id].pack.card.trainingData ? H`<p class="oi-small"><strong>Training data:</strong> ${PACKS.map[id].pack.card.trainingData}</p>` : ''}<p class="oi-subtle">Verified against the original PyTorch model at build time: ${JSON.stringify(PACKS.map[id].pack.verification)} · built ${PACKS.map[id].pack.builtAt} · SHA-256 ${PACKS.map[id].pack.sha256}</p>`; }))}
     <div class="oi-card-title" style="margin-top:12px">Built-in detection on this page</div>${modelCardView(BUILTIN_CARD)}
     <div class="oi-card-title" style="margin-top:12px">Self-hosted AI model (if deployed on this site)</div>${modelCardView(SAM_CARD)}
     <p class="oi-subtle">The default AI mode is “None”. Nothing runs until you choose a mode, review its card and press Run (or click with the AI click-to-segment tool).</p>
@@ -1574,6 +1710,7 @@ var ACT = {
   'consent-revoke': function () { clearSession(true); toast('Consent withdrawn; imaging data wiped.'); },
   phantom: function () { loadPhantom(); },   // synthetic, contains no patient data: no consent needed
   'sam-load': function () { samLoad(); },
+  'pack-load': function (el) { packLoad(el.getAttribute('data-id')); },
   theme: function (el) { var t = el.getAttribute('data-theme'); if (t === 'system' || t === 'light' || t === 'dark') { DISPLAY.theme = t; scheduleRender(); announce('Theme: ' + t + '.'); } },
   tool: function (el) { S.tool = el.getAttribute('data-tool'); S.pending = null; scheduleRender(); setTimeout(function () { Inspector.canvas.focus({ preventScroll: true }); }, 40); },
   'view-reset': function () { Inspector.reset(); scheduleRender(); }, step: function (el) { Inspector.step(parseInt(el.getAttribute('data-dir'), 10)); },
@@ -1614,7 +1751,8 @@ var CHANGE = {
   'ann-note': function (el) { var a = S.annotations.find(function (x) { return x.id === el.getAttribute('data-id'); }); if (a) a.note = String(el.value || '').slice(0, 140); },
   notes: function (el) { if (!el.checked) { S.notesEnabled = false; S.exportNotes = false; S.annotations.forEach(function (a) { a.note = ''; }); scheduleRender(); return; } el.checked = false; confirmBox('Enable free-text notes?', notice('bad', 'Notes stay in memory only and are never sent anywhere, but anything you type could be identifying. Do not enter PHI. Notes are excluded from exports unless you opt in.'), 'Enable notes').then(function (ok) { if (ok) { S.notesEnabled = true; scheduleRender(); } }); },
   'export-notes': function (el) { S.exportNotes = el.checked; },
-  'ai-mode': function (el) { S.ai.mode = el.value; S.ai.reviewed = false; S.ai.error = null; if (el.value !== 'local') S.ai.model = null; S.ai.card = el.value === 'builtin' ? BUILTIN_CARD : el.value === 'sam' ? SAM_CARD : null; if (el.value === 'sam') samCheck(); if (el.value !== 'sam' && S.tool === 'aiclick') S.tool = 'pan'; scheduleRender(); },
+  'ai-mode': function (el) { S.ai.mode = el.value; S.ai.reviewed = false; S.ai.error = null; if (el.value !== 'local') S.ai.model = null; S.ai.card = el.value === 'builtin' ? BUILTIN_CARD : el.value === 'sam' ? SAM_CARD : el.value === 'packs' && packSel() && packSel().card ? packSel().card : null; if (el.value === 'sam') samCheck(); if (el.value === 'packs') packsCheck(); if (el.value !== 'sam' && S.tool === 'aiclick') S.tool = 'pan'; scheduleRender(); },
+  'ai-pack': function (el) { var e = PACKS.map[el.value]; if (!e || !e.pack) return; S.ai.pack = el.value; S.ai.card = e.card; S.ai.reviewed = false; S.ai.error = null; scheduleRender(); },
   'viewer-bg': function (el) { if (VIEWER_BG[el.value]) { DISPLAY.viewerBg = el.value; Inspector.draw(); scheduleRender(); } },
   'ai-reviewed': function (el) { S.ai.reviewed = el.checked; scheduleRender(); },
   'ai-threshold': function (el) { S.ai.threshold = parseFloat(el.value) || 0; scheduleRender(); },

@@ -1,0 +1,9 @@
+# Model-pack builder (PyTorch is installed separately, CPU build)
+torchxrayvision==1.5.5
+monai[fire]==1.4.0
+huggingface_hub
+onnx
+onnxscript
+onnxruntime
+numpy<2
+requests

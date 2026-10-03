@@ -92,6 +92,30 @@ oncotics/scripts/package-hostinger.sh     # -> oncotics/oncotics-hostinger-uploa
 Never point hPanel Git at the source branch (`claude/oncotics-precision-workspace-uuswkw` or
 `main`). That would copy the whole monorepo into `public_html`.
 
+## Trained cancer AI model packs (Imaging Workbench)
+The Workbench's "Trained cancer AI models" mode uses model packs, one folder per model:
+- `cxr-xrv-densenet121`: TorchXRayVision chest X-ray model (Apache-2.0). It scores 18 findings,
+  including Mass, Nodule and Lung Lesion, and shows activation maps.
+- `path-camelyon16-resnet18`: MONAI pathology tumour detection (Apache-2.0, Camelyon16). It
+  produces a tumour heatmap over H&E tiles.
+
+Each folder holds `model.onnx`, converted from the authors' official weights, plus `pack.json`
+(model card, checksum and the numerical check against the original model).
+
+1. On GitHub, open the repository, then **Actions**, then **Oncotics AI model packs**. If Actions is
+   disabled, enable it once under **Settings → Actions → General → Allow all actions**.
+2. The workflow runs on every push that changes `oncotics/ai/`. You can also click
+   **Run workflow**.
+3. When it is green, open the run and download the artifact **oncotics-ai-model-packs** (a zip).
+4. Unzip it. You get the folders `cxr-xrv-densenet121` and `path-camelyon16-resnet18`.
+5. In hPanel File Manager, open `public_html/assets/`, create the folder `models` if it does not
+   exist, and upload both folders into it with all their files. You should end up with
+   `public_html/assets/models/cxr-xrv-densenet121/model.onnx`, `.../pack.json`, and the same for
+   the pathology folder.
+6. Open https://oncotics.com/imaging/ → **Experimental AI Detection & Inference** →
+   **Trained cancer AI models**. Each model shows **Load model**. After loading it shows
+   "checksum verified".
+
 ## 3. Finish (both methods)
 
 1. hPanel → **Security → SSL**: make sure the free SSL certificate is installed and active. The
