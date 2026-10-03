@@ -1,9 +1,10 @@
 
 /* ====================================================================
    LOADERS: FINAL CURATED EXTRA LAYER
-   All "verify"-mode sources are called ONLY from explicit user actions
-   (buttons labeled "Try live request"), with tryVerify:true. Shapes are
-   validated; anything missing renders as "Not reported by source".
+   These sources are called automatically as the user searches (or when a
+   section is first shown). If the browser cannot reach a source, the section
+   shows the official link-out. Shapes are validated; anything missing
+   renders as "Not reported by source".
    No controlled-access data, no keys embedded, nothing persisted.
    ==================================================================== */
 var TV = { tryVerify: true };

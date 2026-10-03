@@ -193,6 +193,7 @@ registerModule({
     return H`${moduleHead('overview', H`<button type="button" class="ow-btn ow-btn-sm" data-act="export-json">${icon('download')}Export overview</button><button type="button" class="ow-btn ow-btn-sm" data-act="print">${icon('print')}Print</button>`)}
       ${interpretationPanel()}
       ${imagingContextCard()}
+      ${cancerTypeCard()}
       ${partialFailure() ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div><strong>Partial results.</strong> Some sources could not be loaded. Other sources are still shown. <button type="button" class="ow-linkbtn" data-act="retry">Retry failed requests</button></div></div>` : ''}
       ${c.ldt ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div>${SAFETY.ldt} ${ext(linkout('fda-cdx', ''), 'FDA companion-diagnostics list')}</div></div>` : ''}
       <div class="ow-section">${conflictPanel()}</div>

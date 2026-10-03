@@ -1018,7 +1018,7 @@ var SOURCES = [
     attribution: 'Literature data provided by Europe PMC / EMBL-EBI.', privacyNote: 'Queries are sent directly to www.ebi.ac.uk.', safetyNote: SAFETY.literature,
     rateLimitPolicy: 'Fair use; bursts may be throttled (HTTP 503 without CORS headers appears as a network error)', concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 25000, lastVerifiedNote: V, featureFlag: 'europepmc', mayLagOfficialDb: false },
 
-  // ---------------- Tier B: enrichment (lazy / user-triggered) ----------------
+  // ---------------- Tier B: enrichment (loaded when the section is shown) ----------------
   { id: 'rxnorm', displayName: 'RxNorm / RxNav', region: 'United States', kind: 'Drug vocabulary', tier: 'B', defaultMode: 'live', corsVerified: true,
     apiBase: 'https://rxnav.nlm.nih.gov/REST', endpoints: ['/drugs.json', '/rxcui.json', '/rxcui/{rxcui}/related.json'],
     linkoutSearchUrlTemplate: 'https://mor.nlm.nih.gov/RxNav/search?searchBy=String&searchTerm={q}', linkoutDetailUrlTemplate: 'https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm={id}',
@@ -1192,14 +1192,15 @@ resetRuntime();
    SOURCE CAPABILITY REGISTRY: FINAL CURATED EXTRA LAYER
    --------------------------------------------------------------------
    Modes (defaultMode / runtime mode):
-     live                   CORS + shape verified; used by default.
-     verify                 Documented public read-only API, NOT yet CORS-
-                            verified from https://oncotics.com. Never called
-                            automatically. A user can (a) press "Check" in the
-                            Coverage Console or (b) press an explicit "Try live
-                            request" button. On success the runtime mode becomes
-                            "live" for this page session only; on failure the
-                            official link-out is shown.
+     live                   Public read-only API called automatically by the
+                            browser as the user searches. Sources with
+                            corsVerified:true were verified from a browser
+                            origin; the others are called the same way and,
+                            if the browser cannot reach them (CORS, network,
+                            rate limit), the section shows the official
+                            link-out instead.
+     verify                 Reserved: called only from an explicit user action.
+                            No source uses this mode by default.
      linkout                Official site opened directly by the browser.
      authenticated-optional Needs a user-supplied key/token (memory only) AND a
                             feature flag; link-out otherwise.
@@ -1209,13 +1210,14 @@ resetRuntime();
      ai-derived-optional    AI-derived outputs; verify-only, separately labeled.
      imaging-source         Used only by the separate Imaging Workbench page.
      unavailable / download Not usable live from a browser.
-   Nothing in this block was CORS-verified from the real origin at build
-   time (the build environment could not reach these hosts), so every new
-   API entry is "verify". Promote to "live" only after verifying from
-   https://oncotics.com (Coverage Console > Check availability) and updating
-   corsVerified / lastVerifiedNote here.
-   ==================================================================== */
-var VERIFY_NOTE = 'Not yet CORS-verified from https://oncotics.com. Never called automatically; use “Check” in the Coverage Console or an explicit “Try live request” button. Falls back to the official link-out.';
+   Nothing in this block could be CORS-verified from the real origin at build
+   time (the build environment could not reach these hosts). The API entries
+   are nevertheless "live" (called automatically), with corsVerified:false;
+   any that fail from the browser fall back to their official link-outs.
+   Confirm from https://oncotics.com (Coverage Console > Check availability)
+   and set corsVerified / lastVerifiedNote here.
+   ==== */
+var VERIFY_NOTE = 'Called automatically as you search. Not yet CORS-confirmed from https://oncotics.com; if your browser cannot reach it, the official link-out is shown instead.';
 Object.assign(CONFIG, {
   features: {
     oncokbAuthenticated: false,   // optional OncoKB token flow: off until terms + CORS are verified for oncotics.com
@@ -1292,7 +1294,7 @@ var FLAG_DEFS = [
   ['imagingDicomSensitive', 'Imaging / DICOM sensitive', 'img'], ['globeLocationSource', 'Globe location source', 'globe'], ['externalTileProviderPossible', 'External tile provider possible', 'warn'],
   ['controlledAccessProhibited', 'Controlled access prohibited', 'outline'], ['memoryOnlyImageProcessing', 'Memory-only image processing', 'good'], ['safetySurveillanceAggregateOnly', 'Aggregate surveillance only', 'warn']
 ];
-function mkSrc(o) { return Object.assign({ tier: 'B', defaultMode: 'verify', corsVerified: false, language: 'English', publicDataOnly: true, controlledAccessProhibited: true, lastVerifiedNote: VERIFY_NOTE, concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 15000 }, o); }
+function mkSrc(o) { return Object.assign({ tier: 'B', defaultMode: 'live', corsVerified: false, language: 'English', publicDataOnly: true, controlledAccessProhibited: true, lastVerifiedNote: VERIFY_NOTE, concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 15000 }, o); }
 function lo(o) { return mkSrc(Object.assign({ tier: 'C', defaultMode: 'linkout', lastVerifiedNote: 'Official link-out (opened by your browser). Template should be spot-checked before release.', verify: true }, o)); }
 var EXTRA_SOURCES = [
   // ---- A. Cancer ontology and cohort context
@@ -1379,7 +1381,7 @@ SOURCES.forEach(function (s) {
   SRC[s.id] = s;
   if (s.concurrencyLimit == null) s.concurrencyLimit = 1; if (!s.timeoutMs) s.timeoutMs = CONFIG.defaultTimeoutMs;
   if (s.publicDataOnly == null) s.publicDataOnly = true; if (s.controlledAccessProhibited == null) s.controlledAccessProhibited = true;
-  s.status = s.status || (s.defaultMode === 'live' ? (s.corsVerified ? 'verified' : 'verify') : s.defaultMode === 'verify' ? 'verify (live candidate)' : s.defaultMode);
+  s.status = s.status || (s.defaultMode === 'live' ? (s.corsVerified ? 'verified' : 'live (CORS to be confirmed)') : s.defaultMode);
   if (!s.featureFlag) s.featureFlag = s.id;
 });
 var FETCHABLE_MODES = { live: 1, verify: 1, 'rate-limited': 1, unavailable: 1 };
@@ -1471,8 +1473,7 @@ var Net = (function () {
     var s = SRC[src], rt = Runtime[src];
     if (!s) throw mkErr('config', src);
     if (!FETCHABLE_MODES[rt.mode]) throw mkErr('linkout', src);
-    // "verify" sources are never called automatically: only an explicit user action
-    // (Coverage Console check or a "Try live request" button) may attempt them.
+    // A source configured as "verify" (none by default) is called only from an explicit user action.
     if (rt.mode === 'verify' && !opts.tryVerify && !opts.force) { rt.skipped++; throw mkErr('verify', src); }
     if (State.prefs.disabledSources && State.prefs.disabledSources.has(src)) { rt.skipped++; throw mkErr('disabled', src); }
     if (rt.mode === 'unavailable' && !opts.force) { rt.skipped++; throw mkErr('unavailable', src); }
@@ -1546,7 +1547,7 @@ function friendlyError(e) {
     case 'network': return 'Live request unavailable from this browser: ' + name + ' could not be reached (it may be temporarily down, rate-limiting, or blocking browser access). Open the source directly.';
     case 'unavailable': return name + ' is marked unavailable for this session after an earlier failure. Use Retry to try again, or open the official source.';
     case 'linkout': return 'This source is link-out only. Open the official source instead.';
-    case 'verify': return name + ' has not been verified for browser access from oncotics.com yet, so Oncotics does not call it automatically. Use “Try live request” to attempt it now, or open the official source.';
+    case 'verify': return name + ' is not called automatically in this configuration. Open the official source instead.';
     case 'auth': return name + ' needs a licensed token that you supply (kept in memory only). Open the official source instead.';
     case 'disabled': return 'You turned off live requests to ' + name + ' for this session (Coverage Console). Open the official source instead.';
     case 'server': return 'This source is temporarily unavailable. You can open the official source instead.';
@@ -2899,9 +2900,10 @@ Loaders.literature = async function (signal, ctx, f, cursor) {
 
 /* ====================================================================
    LOADERS: FINAL CURATED EXTRA LAYER
-   All "verify"-mode sources are called ONLY from explicit user actions
-   (buttons labeled "Try live request"), with tryVerify:true. Shapes are
-   validated; anything missing renders as "Not reported by source".
+   These sources are called automatically as the user searches (or when a
+   section is first shown). If the browser cannot reach a source, the section
+   shows the official link-out. Shapes are validated; anything missing
+   renders as "Not reported by source".
    No controlled-access data, no keys embedded, nothing persisted.
    ==================================================================== */
 var TV = { tryVerify: true };
@@ -3084,6 +3086,33 @@ function toast(msg) {
 /* ---- render scheduling (rAF-batched; preserves focus) ---- */
 var renderQueued = false;
 function scheduleRender() { if (renderQueued) return; renderQueued = true; requestAnimationFrame(function () { renderQueued = false; renderAll(); }); }
+
+/* ---- automatic live loading ----
+   Every section requests its public source as soon as it is shown for the current search; there is
+   no separate "try live" step. Each request starts at most once per search. If a source cannot be
+   reached from this browser (CORS, network, rate limit), the section shows the official link-out. */
+var AutoLive = { gen: -1, state: new Map() };
+function autoRun(token, fn) {
+  if (AutoLive.gen !== State.gen) { AutoLive.gen = State.gen; AutoLive.state = new Map(); }
+  if (AutoLive.state.has(token)) return false;
+  AutoLive.state.set(token, 'pending');
+  var g = State.gen;
+  setTimeout(function () {
+    if (g !== State.gen) return;
+    try { fn(); } catch (e) { /* the section falls back to its link-out */ }
+    AutoLive.state.set(token, 'done'); scheduleRender();
+  }, 0);
+  return true;
+}
+function autoPending(token) { return AutoLive.gen === State.gen && AutoLive.state.get(token) === 'pending'; }
+function actEl(attrs) { attrs = attrs || {}; return { getAttribute: function (n) { return attrs[n] != null ? String(attrs[n]) : null; } }; }
+// Runs ACTIONS[act] automatically once per search. Shows a loading row meanwhile, or the link-outs when
+// nothing could be requested (for example a required identifier is missing).
+function autoAct(token, act, attrs, linkouts, what) {
+  if (autoRun(token, function () { ACTIONS[act](actEl(attrs)); }) || autoPending(token)) return H`<p class="ow-row ow-muted" aria-busy="true"><span class="ow-spinner" aria-hidden="true"></span> Loading ${what || 'live data'}…</p>`;
+  var lo2 = arr(linkouts);
+  return H`<div class="ow-empty"><p>${what ? 'No live data available for ' + what + ' from this browser.' : 'No live data available from this browser.'}${lo2.length ? ' Open the official source:' : ''}</p>${lo2.length ? H`<div class="ow-card-foot">${lo2.map(function (l) { return extBtn(l.url, l.label); })}</div>` : ''}</div>`;
+}
 var Drafts = {};   // unsubmitted form edits (memory only), keyed by field id or name=value
 function draftKey(el) { return el.id || (el.name ? el.name + '=' + el.value : null); }
 function applyDrafts(scope) {
@@ -3178,7 +3207,7 @@ function renderHeader() {
     <button type="button" class="ow-btn ow-btn-sm" data-act="clear-session">${icon('trash')}<span class="ow-btn-label">Clear Session</span></button>`);
   setHTML($('#ow-pills'), PILLS.map(function (p) { return H`<button type="button" class="ow-pill" data-act="search" data-term="${p}">${p}</button>`; }));
   Array.prototype.forEach.call(ROOT.querySelectorAll('[data-ow-year]'), function (el) { el.textContent = String(YEAR); });
-  setHTML($('#ow-footer-sources'), H`Live data from CIViC, ClinicalTrials.gov (NLM), openFDA (U.S. FDA), Ensembl, UniProt, Europe PMC (EMBL-EBI), MyGene.info, MyVariant.info, RxNorm (NLM), STRING, Reactome, AlphaFold DB, Open Targets, cBioPortal, GWAS Catalog, ChEMBL, PubChem and EBI OLS. On request (verify mode): OncoTree, NCI GDC, DGIdb, Complex Portal, QuickGO, PDBe, EBI Proteins, OpenAlex, Crossref and Semantic Scholar. Official link-outs for regulators, guidelines, vaccines, reproductive health, expert knowledge, patient education and imaging resources. openFDA device records may lag official FDA databases. ${LEGAL.independent}`);
+  setHTML($('#ow-footer-sources'), H`Live data from CIViC, ClinicalTrials.gov (NLM), openFDA (U.S. FDA), Ensembl, UniProt, Europe PMC (EMBL-EBI), MyGene.info, MyVariant.info, RxNorm (NLM), STRING, Reactome, AlphaFold DB, Open Targets, cBioPortal, GWAS Catalog, ChEMBL, PubChem and EBI OLS. Also live: OncoTree, NCI GDC, DGIdb, Complex Portal, QuickGO, PDBe, EBI Proteins, OpenAlex, Crossref and Semantic Scholar. Official link-outs for regulators, guidelines, vaccines, reproductive health, expert knowledge, patient education and imaging resources. openFDA device records may lag official FDA databases. ${LEGAL.independent}`);
 }
 function applyTheme() {
   if (State.prefs.theme === 'system') ROOT.removeAttribute('data-theme'); else ROOT.setAttribute('data-theme', State.prefs.theme);
@@ -3576,6 +3605,7 @@ registerModule({
     return H`${moduleHead('overview', H`<button type="button" class="ow-btn ow-btn-sm" data-act="export-json">${icon('download')}Export overview</button><button type="button" class="ow-btn ow-btn-sm" data-act="print">${icon('print')}Print</button>`)}
       ${interpretationPanel()}
       ${imagingContextCard()}
+      ${cancerTypeCard()}
       ${partialFailure() ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div><strong>Partial results.</strong> Some sources could not be loaded. Other sources are still shown. <button type="button" class="ow-linkbtn" data-act="retry">Retry failed requests</button></div></div>` : ''}
       ${c.ldt ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div>${SAFETY.ldt} ${ext(linkout('fda-cdx', ''), 'FDA companion-diagnostics list')}</div></div>` : ''}
       <div class="ow-section">${conflictPanel()}</div>
@@ -4242,8 +4272,8 @@ function globePanel() {
       <button type="button" class="ow-btn ow-btn-sm" data-act="globe-reset">${icon('refresh')}Reset view</button><button type="button" class="ow-btn ow-btn-sm" data-act="globe-export">${icon('download')}Export locations</button><button type="button" class="ow-btn ow-btn-sm ow-btn-ghost" data-act="globe-clear">Clear globe</button>` : ''}</div></div>`;
   var privacy = H`<div class="ow-globe-privacy">${icon('shield')}<span><strong>Globe Privacy:</strong> Locations shown are derived only from public records in memory. Oncotics does not use your device location and does not store globe state.</span></div>`;
   if (!all.length) {
-    return H`<div class="ow-card ow-globe-card">${head}<div class="ow-empty" style="margin-top:10px"><h3>No public non-PHI location records were found for this query.</h3><p>Trial site/country fields, FDA recall/enforcement firm locations and (on request) literature institution countries appear here when loaded.</p>
-      <div class="ow-card-foot" style="justify-content:center">${hasSitesBtn ? '' : ''}${slot('trials:list').status === 'ok' ? '' : H`<button type="button" class="ow-btn ow-btn-sm" data-act="tab" data-mod="trials">${icon('trial')}Open Trials</button>`}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="lit-institutions">${icon('book')}Try live: literature institution countries (OpenAlex)</button>` : ''}</div></div>${privacy}</div>`;
+    return H`<div class="ow-card ow-globe-card">${head}<div class="ow-empty" style="margin-top:10px"><h3>No public non-PHI location records were found for this query.</h3><p>Trial site/country fields, FDA recall/enforcement firm locations and literature institution countries appear here when the sources return them.</p>
+      <div class="ow-card-foot" style="justify-content:center">${hasSitesBtn ? '' : ''}${slot('trials:list').status === 'ok' ? '' : H`<button type="button" class="ow-btn ow-btn-sm" data-act="tab" data-mod="trials">${icon('trial')}Open Trials</button>`}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? autoAct('lit:institutions', 'lit-institutions', {}, [], 'literature institution countries (OpenAlex)') : ''}</div></div>${privacy}</div>`;
   }
   var clusters = clusterLocations(locs, 3);
   var listView = H`<div class="ow-table-wrap ow-globe-list"><table class="ow-table"><caption>Location clusters (${clusters.length}) — every globe marker has a row here</caption><thead><tr><th scope="col">Location</th><th scope="col">Record types</th><th scope="col">Count</th><th scope="col">Precision</th><th scope="col">Source</th><th scope="col">Actions</th></tr></thead><tbody>${clusters.slice(0, 150).map(function (c) {
@@ -4257,7 +4287,7 @@ function globePanel() {
     ${legend}
     ${GlobeState.view === 'globe' ? H`<div class="ow-globe-wrap"><div id="ow-globe-mount" class="ow-globe-mount"></div><div class="ow-globe-hint">${engineNote} · drag to rotate · scroll or +/− to zoom · select a marker for details</div></div>` : listView}
     ${GlobeState.view === 'globe' ? det('globe-list', H`${icon('table')} Accessible location list (${clusters.length} clusters, ${num(locs.reduce(function (a, l) { return a + l.count; }, 0))} records)`, listView, false) : ''}
-    <div class="ow-row" style="margin-top:8px">${hasSitesBtn ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="trial-sites">${icon('trial')}Load site-level trial locations (ClinicalTrials.gov)</button>` : ''}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="lit-institutions">${icon('book')}Try live: literature institution countries (OpenAlex)</button>` : ''}${slotView('trials:sites', { skeleton: false })}${slotView('lit:institutions', { skeleton: false })}${imagery}</div>
+    <div class="ow-row" style="margin-top:8px">${hasSitesBtn && slot('trials:sites').status === 'idle' ? autoAct('trials:sites', 'trial-sites', {}, [], 'site-level trial locations (ClinicalTrials.gov)') : ''}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? autoAct('lit:institutions', 'lit-institutions', {}, [], 'literature institution countries (OpenAlex)') : ''}${slotView('trials:sites', { skeleton: false })}${slotView('lit:institutions', { skeleton: false })}${imagery}</div>
     ${GlobeState.filter ? H`<div class="ow-notice ow-notice-info" style="margin-top:8px">${icon('filter')}<div>In-memory filter active: <strong>${GlobeState.filter.label}</strong> (${GlobeState.filter.keys.length} records). Trials and recalls lists show matching records first. <button type="button" class="ow-linkbtn" data-act="globe-unfilter">Remove filter</button></div></div>` : ''}
     ${privacy}<p class="ow-subtle" style="margin-top:6px">${SAFETY.globe} Marker size reflects record count only and does not imply clinical importance. State- and country-level markers are placed at approximate centroids.</p></div>`;
 }
@@ -4427,11 +4457,13 @@ function molMapSvg(G, V) {
   return raw('<svg class="ow-mm-svg" viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="group" aria-label="Molecular Context Map: ' + V.nodes.length + ' nodes and ' + V.edges.length + ' relationships. A text table follows.">' + out.join('') + '</svg>');
 }
 function molMapPanel() {
+  // Biology context for the map loads automatically for gene-anchored queries.
+  if (State.ctx && bioGene()) autoRun('mm:enrich', function () { ['gene', 'protein', 'pathways', 'interactions'].forEach(function (t) { bioEnsure(t); }); });
   var G = buildMolMap(); if (!G.nodes.length) return '';
   var V = mmVisible(G), types = countBy(G.nodes.filter(function (n) { return n.id !== G.center; }), function (n) { return n.type; });
   var head = H`<div class="ow-card-head"><div><div class="ow-card-title">${icon('graph')} Molecular Context Map</div><div class="ow-card-sub">${V.nodes.length} of ${G.nodes.length} nodes · ${V.edges.length} relationships · built from records loaded in memory</div></div>
     <div class="ow-toolbar"><div class="ow-seg" role="group" aria-label="Map view"><button type="button" aria-pressed="${!MMState.table ? 'true' : 'false'}" data-act="mm-view" data-view="map">${icon('graph')} Map</button><button type="button" aria-pressed="${MMState.table ? 'true' : 'false'}" data-act="mm-view" data-view="table">${icon('table')} Table</button></div>
-      <button type="button" class="ow-btn ow-btn-sm" data-act="mm-enrich">${icon('refresh')}Load biology context</button><button type="button" class="ow-btn ow-btn-sm" data-act="mm-export" data-fmt="json">${icon('download')}JSON</button><button type="button" class="ow-btn ow-btn-sm" data-act="mm-export" data-fmt="csv">${icon('table')}CSV</button></div></div>`;
+      <button type="button" class="ow-btn ow-btn-sm" data-act="mm-export" data-fmt="json">${icon('download')}JSON</button><button type="button" class="ow-btn ow-btn-sm" data-act="mm-export" data-fmt="csv">${icon('table')}CSV</button></div></div>`;
   var filters = H`<div class="ow-mm-filters" role="group" aria-label="Filter node types">${types.map(function (t) { var T = MM_TYPES[t[0]] || MM_TYPES.concept, on = !MMState.hidden.has(t[0]); return H`<label class="ow-check ow-mm-chip"><input type="checkbox" data-change="mm-type" value="${t[0]}" ${on ? raw('checked') : ''}><span class="ow-mm-sw" style="--mm:${T[1]}" aria-hidden="true"></span>${T[0]} <span class="ow-subtle">(${t[1]})</span></label>`; })}</div>`;
   var legend = H`<div class="ow-mm-legend">${Object.keys(MM_CAT).map(function (k) { return H`<span class="ow-mm-lg"><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="currentColor" stroke-width="2" ${raw(MM_CAT[k][1] === 'dashed' ? 'stroke-dasharray="6 4"' : MM_CAT[k][1] === 'dotted' ? 'stroke-dasharray="2 4"' : MM_CAT[k][1] === 'dashdot' ? 'stroke-dasharray="8 3 2 3"' : '')}/></svg>${MM_CAT[k][0]}</span>`; })}</div>`;
   var tbl = H`${table([{ label: 'Node', render: function (n) { var T = MM_TYPES[n.type] || MM_TYPES.concept; return H`<button type="button" class="ow-linkbtn" data-act="mm-node" data-id="${n.id}">${n.label}</button><div class="ow-subtle">${T[0]}</div>`; } }, { label: 'Source', render: function (n) { return SRC[n.source] ? SRC[n.source].displayName : (n.source || 'query'); } }, { label: 'Data category', render: function (n) { return n.category; } }, { label: 'Confidence', render: function (n) { return confBadge(n.confidence); } }], V.nodes, 'Nodes')}
@@ -4541,7 +4573,18 @@ function imagingContextCard() {
   return H`<div class="ow-card ow-img-card"><div class="ow-card-head"><div><div class="ow-card-title">${icon('scan')} Oncotics Imaging Workbench</div><div class="ow-card-sub">A separate page for memory-only image viewing (OHIF), lesion inspection, annotations and opt-in experimental AI inference.</div></div>
     <a class="ow-btn ow-btn-primary" href="${CONFIG.imagingUrl}" target="_blank" rel="noopener noreferrer">${icon('scan')}Open Imaging Workbench<span class="ow-sr"> (opens a separate page)</span></a></div>
     <p class="ow-small" style="margin-top:6px">Nothing imaging-related is loaded on this page. Context queries here use only the non-PHI concept “${c.imaging ? c.imaging.concept : c.label}”; no image data is ever attached. ${SAFETY.imaging}</p>
-    <div class="ow-card-foot">${extBtn(linkout('tcia', ''), 'TCIA collections')}${extBtn(linkout('nci_idc', ''), 'NCI Imaging Data Commons')}${extBtn(linkout('radlex', ''), 'RadLex')}${extBtn(linkout('radiologyinfo', ''), 'RadiologyInfo.org (patient education)')}<button type="button" class="ow-btn ow-btn-sm" data-act="img-devices">${icon('device')}Imaging device records (openFDA, user-triggered)</button></div></div>`;
+    <div class="ow-card-foot">${extBtn(linkout('tcia', ''), 'TCIA collections')}${extBtn(linkout('nci_idc', ''), 'NCI Imaging Data Commons')}${extBtn(linkout('radlex', ''), 'RadLex')}${extBtn(linkout('radiologyinfo', ''), 'RadiologyInfo.org (patient education)')}</div>
+    ${c.imaging && c.imaging.workbench ? '' : H`<div class="ow-section">${sectionHead('Imaging device records (openFDA)', ['openfda-device'])}${slot('img:devices').status === 'idle' ? autoAct('img:devices', 'img-devices', {}, [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], 'imaging device records') : slotView('img:devices', { skeleton: 1, linkout: [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], emptyMsg: 'openFDA returned no device authorizations for this imaging concept (records may lag the official database).', render: function (d) { return H`<p class="ow-subtle">${num(d.items.length)} records shown. ${SAFETY.lag}</p><div class="ow-stack">${d.items.slice(0, 6).map(function (r) { return authCard(r); })}</div>`; } })}</div>`}</div>`;
+}
+// Cancer type context (OncoTree + NCI GDC project aggregate), loaded live with disease queries.
+function cancerTypeCard() {
+  var ot = slot('ont:oncotree'), gp = slot('bio:gdcProjects'); if (ot.status === 'idle' && gp.status === 'idle') return '';
+  var c = State.ctx, term = c ? (c.disease || c.concept || c.label || '') : '';
+  return H`<div class="ow-card"><div class="ow-card-head"><div><div class="ow-card-title">${icon('dna')} Cancer type context</div><div class="ow-card-sub">Ontology matches and public research cohorts for “${term}”. Context only; not a diagnosis.</div></div></div>
+    <div class="ow-grid-2"><div>${sectionHead('OncoTree tumor types', ['oncotree'])}${slotView('ont:oncotree', { skeleton: 1, linkout: [{ url: LINK.oncotree(term), label: 'OncoTree' }], emptyMsg: 'OncoTree has no tumor type matching this name.', render: function (d) {
+      return H`<ul>${d.items.slice(0, 6).map(function (x) { return H`<li>${ext(LINK.oncotree(x.code), x.code)} ${x.name} ${badge(x.confidence, x.confidence === 'Exact' ? 'good' : 'outline')} <span class="ow-subtle">${x.tissue || ''}${x.mainType ? ' · ' + x.mainType : ''}</span></li>`; })}</ul>`; } })}</div>
+    <div>${sectionHead('NCI GDC projects (open-access aggregate)', ['nci_gdc'])}${slotView('bio:gdcProjects', { skeleton: 1, linkout: [{ url: linkout('nci_gdc', ''), label: 'NCI GDC Data Portal' }], emptyMsg: 'No GDC project names matched this term.', render: function (d) {
+      return H`<ul>${d.items.slice(0, 6).map(function (p) { return H`<li>${ext(LINK.gdcProject(p.id), p.id)} ${p.name || ''} <span class="ow-subtle">${p.cases != null ? num(p.cases) + ' cases' : ''}${p.program ? ' · ' + p.program : ''}</span></li>`; })}</ul><p class="ow-subtle">${SAFETY.gdc}</p>`; } })}</div></div></div>`;
 }
 
 /* ====================================================================
@@ -4618,12 +4661,14 @@ function drugSubtab(tab) {
   }
   if (tab === 'chemistry') {
     var anyLoaded = slot('drug:chembl').status !== 'idle' || slot('drug:pubchem').status !== 'idle';
-    return H`${anyLoaded ? '' : H`<div class="ow-empty"><h3>Chemical and mechanism context</h3><p>Loads ChEMBL (molecule, mechanism, targets) and PubChem (identity, properties) on request.</p><button type="button" class="ow-btn ow-btn-primary" data-act="drug-chem">${icon('flow')}Load chemical context</button></div>`}
+    return H`${anyLoaded ? '' : autoAct('drug:chem', 'drug-chem', {}, [{ url: linkout('chembl', c.drug), label: 'Search ChEMBL' }, { url: linkout('pubchem', c.drug), label: 'Search PubChem' }], 'chemical context (ChEMBL, PubChem)')}
       ${anyLoaded ? H`<div class="ow-grid-2"><div class="ow-card">${sectionHead('ChEMBL', ['chembl'])}${slotView('drug:chembl', { skeleton: 1, linkout: [{ url: linkout('chembl', c.drug), label: 'Search ChEMBL' }], emptyMsg: 'ChEMBL returned no molecule for this name.', render: function (d) { var m = d.molecule;
           return H`<dl class="ow-kv"><dt>ChEMBL ID</dt><dd>${ext(LINK.chembl(m.id), m.id)}</dd><dt>Preferred name</dt><dd>${orNR(m.name)}</dd><dt>Molecule type</dt><dd>${orNR(m.type)}</dd><dt>Max phase</dt><dd>${m.maxPhase != null ? m.maxPhase : nr()}</dd><dt>First approval</dt><dd>${orNR(m.firstApproval)}</dd><dt>Synonyms</dt><dd>${m.synonyms.join('; ') || nr()}</dd>${m.props && m.props.full_mwt ? H`<dt>Molecular weight</dt><dd>${m.props.full_mwt}</dd><dt>Formula</dt><dd>${orNR(m.props.full_molformula)}</dd>` : ''}</dl>
             <h4 style="margin-top:12px">Mechanisms of action</h4>${d.mechanisms.length ? H`<ul>${d.mechanisms.map(function (x) { return H`<li>${x.moa || ''} ${badge(x.action || '', 'outline')} <span class="ow-subtle">${x.target || ''}</span>${x.comment ? H`<div class="ow-small ow-muted">${x.comment}</div>` : ''}</li>`; })}</ul>` : nr()}`; } })}</div>
         <div class="ow-card">${sectionHead('PubChem', ['pubchem'])}${slotView('drug:pubchem', { skeleton: 1, linkout: [{ url: linkout('pubchem', c.drug), label: 'Search PubChem' }], emptyMsg: 'PubChem has no compound for this name (biologics are usually not compounds).', render: function (d) { var p = d.props;
-          return H`<dl class="ow-kv"><dt>CID</dt><dd>${ext(LINK.pubchemCid(p.CID), String(p.CID))}</dd><dt>Formula</dt><dd>${orNR(p.MolecularFormula)}</dd><dt>Molecular weight</dt><dd>${orNR(p.MolecularWeight)}</dd><dt>XLogP</dt><dd>${p.XLogP != null ? p.XLogP : nr()}</dd><dt>InChIKey</dt><dd class="ow-mono">${orNR(p.InChIKey)}</dd><dt>IUPAC name</dt><dd class="ow-break ow-small">${orNR(p.IUPACName)}</dd></dl>`; } })}</div></div>` : ''}`;
+          return H`<dl class="ow-kv"><dt>CID</dt><dd>${ext(LINK.pubchemCid(p.CID), String(p.CID))}</dd><dt>Formula</dt><dd>${orNR(p.MolecularFormula)}</dd><dt>Molecular weight</dt><dd>${orNR(p.MolecularWeight)}</dd><dt>XLogP</dt><dd>${p.XLogP != null ? p.XLogP : nr()}</dd><dt>InChIKey</dt><dd class="ow-mono">${orNR(p.InChIKey)}</dd><dt>IUPAC name</dt><dd class="ow-break ow-small">${orNR(p.IUPACName)}</dd></dl>`; } })}</div></div>` : ''}
+      <div class="ow-section">${sectionHead('Gene interactions (DGIdb)', ['dgidb'])}<p class="ow-subtle">${SAFETY.dgidb}</p>${slot('drug:dgidb').status === 'idle' ? autoAct('drug:dgidb', 'try-live', { 'data-what': 'dgidb-drug' }, [{ url: LINK.dgidbDrug(c.drug), label: 'DGIdb' }], 'DGIdb gene interactions') : slotView('drug:dgidb', { skeleton: 1, linkout: [{ url: LINK.dgidbDrug(c.drug), label: 'DGIdb' }], emptyMsg: 'DGIdb has no interaction records for this drug name.', render: function (d) {
+        return H`${table([{ label: 'Gene', render: function (x) { return H`<button type="button" class="ow-linkbtn" data-act="search-as" data-term="${x.gene}" data-type="gene">${x.gene}</button>`; } }, { label: 'Interaction type', render: function (x) { return x.types.join(', ') || '—'; } }, { label: 'Score', render: function (x) { return x.score != null ? Number(x.score).toFixed(2) : '—'; } }, { label: 'Sources', render: function (x) { return x.sources.slice(0, 4).join(', '); } }], d.items.slice(0, 25))}${provView(d.prov)}`; } })}</div>`;
   }
   if (tab === 'cdx') {
     var cs = slot('drug:cdx');
@@ -4756,7 +4801,7 @@ function devSubtab(tab) {
     var ev = slot('dev:events');
     return H`<div class="ow-notice ow-notice-warn">${icon('alert')}<div><strong>${SAFETY.maude}</strong> Structured fields only. Free-text narratives are hidden and can be opened one report at a time.</div></div>
       <div class="ow-notice ow-notice-info">${icon('shield')}<div>${SAFETY.phi} Device serial numbers, lot numbers and patient–device pairings are not accepted, displayed or stored.</div></div>
-      <div class="ow-card-foot">${ev.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-primary ow-btn-sm" data-act="dev-events">${icon('alert')}Load adverse-event summary</button>` : ''}${extBtn(LINK.maude(), 'MAUDE public query tool (official)')}</div>
+      <div class="ow-card-foot">${ev.status === 'idle' ? autoAct('dev:events', 'dev-events', {}, [], 'adverse-event summary (openFDA)') : ''}${extBtn(LINK.maude(), 'MAUDE public query tool (official)')}</div>
       <div class="ow-section">${slotView('dev:events', { emptyMsg: 'No MAUDE-derived reports matched in openFDA.', linkout: [{ url: LINK.maude(), label: 'MAUDE' }], render: function (d) {
         return H`<div class="ow-grid-2"><div class="ow-card"><div class="ow-card-title">Report type (all ${num(d.total)} matching)</div>${d.byType ? bars(d.byType.map(function (x) { return [x.term, x.count]; }), { color: 'var(--ow-warn)' }) : nr()}</div><div class="ow-card"><div class="ow-card-title">Most reported product problems</div>${d.problems ? bars(d.problems.map(function (x) { return [x.term, x.count]; }), { color: 'var(--ow-device)' }) : nr()}</div></div>
           <div class="ow-section">${table([{ label: 'Report', render: function (r) { return H`<button type="button" class="ow-linkbtn ow-mono" data-act="open-rec" data-key="${r.key}">${r.data.reportNumber || r.data.mdrKey}</button>`; } }, { label: 'Type', render: function (r) { return badge(r.data.eventType || 'Not reported', /Death/i.test(r.data.eventType) ? 'bad' : /Injury/i.test(r.data.eventType) ? 'warn' : 'outline'); } }, { label: 'Event date', render: function (r) { return r.data.eventDate || '—'; } }, { label: 'Received', render: function (r) { return r.data.received || '—'; } }, { label: 'Device', render: function (r) { return r.data.devices.map(function (x) { return (x.brand || x.generic || '') + (x.productCode ? ' (' + x.productCode + ')' : ''); }).join('; '); } }, { label: 'Manufacturer', render: function (r) { return uniq(r.data.devices.map(function (x) { return x.manufacturer; })).join('; '); } }, { label: 'Problems', render: function (r) { return r.data.problems.slice(0, 3).join('; '); } }, { label: 'Narrative', render: function (r) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="narrative" data-mdr="${r.data.mdrKey}">Show source text</button>`; } }], d.items, 'Most recently received reports (structured fields)')}
@@ -4765,7 +4810,7 @@ function devSubtab(tab) {
   if (tab === 'recalls') {
     var rc = slot('dev:recalls');
     return H`<div class="ow-notice ow-notice-warn">${icon('alert')}<div><strong>${SAFETY.recalls}</strong> Oncotics surfaces the record only and does not advise on clinical response, patient management or device replacement.</div></div>
-      <div class="ow-card-foot">${rc.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-primary ow-btn-sm" data-act="dev-recalls">${icon('alert')}Load recalls and enforcement</button>` : ''}${extBtn(LINK.recall(), 'FDA device recall database (official)')}${extBtn(linkout('medwatch', ''), 'FDA MedWatch safety alerts')}</div>
+      <div class="ow-card-foot">${rc.status === 'idle' ? autoAct('dev:recalls', 'dev-recalls', {}, [], 'recalls and enforcement (openFDA)') : ''}${extBtn(LINK.recall(), 'FDA device recall database (official)')}${extBtn(linkout('medwatch', ''), 'FDA MedWatch safety alerts')}</div>
       <div class="ow-section">${slotView('dev:recalls', { emptyMsg: 'No recall or enforcement records matched in openFDA.', render: function (d) {
         var items = d.items.slice().sort(function (a, b) { var r = function (x) { return x.data.classification === 'Class I' ? 0 : x.data.classification === 'Class II' ? 1 : 2; }; return r(a) - r(b) || String(b.data.initiated || '').localeCompare(String(a.data.initiated || '')); });
         return H`<div class="ow-card">${bars(countBy(items, function (r) { return r.data.classification || 'Classification not reported'; }), { label: 'Recall classification', color: 'var(--ow-bad)' })}</div><div class="ow-stack ow-section">${items.map(function (r) { var x = r.data; return H`<article class="ow-card" ${x.classification === 'Class I' ? raw('style="border-color:var(--ow-bad)"') : ''}><div class="ow-card-head"><div style="min-width:0"><div class="ow-card-title"><button type="button" class="ow-linkbtn" data-act="open-rec" data-key="${r.key}">${x.recallNumber || x.eventNumber}</button> · ${x.firm || ''}</div><div class="ow-card-sub">${trunc(x.product, 220)}</div></div><div class="ow-badges">${recallBadge(x.classification)}${badge(x.status || 'Status not reported', 'outline')}${lagBadge()}</div></div>
@@ -4864,7 +4909,7 @@ function vaxLens(tab) {
       <div class="ow-disclaimer">${SAFETY.trials} Public trial site locations appear on the Overview globe.</div>`;
   if (tab === 'labels') {
     var hasProd = v && v.products && v.products.length;
-    return H`${cur}${hasProd ? H`<div class="ow-section">${sectionHead('openFDA biologic / vaccine labels', ['openfda-drug'])}${slot('vax:labels').status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm ow-btn-primary" data-act="vax-labels">${icon('pill')}Load FDA labels for ${v.products.join(', ')}</button>` : slotView('vax:labels', { linkout: [{ url: linkout('dailymed', v.products[0]), label: 'DailyMed' }, { url: linkout('fda_cber', ''), label: 'FDA CBER' }], emptyMsg: 'openFDA returned no label for these product names. Vaccine labels are authoritative on DailyMed / FDA CBER.', render: function (d) {
+    return H`${cur}${hasProd ? H`<div class="ow-section">${sectionHead('openFDA biologic / vaccine labels', ['openfda-drug'])}${slot('vax:labels').status === 'idle' ? autoAct('vax:labels', 'vax-labels', {}, [{ url: linkout('dailymed', v.products[0]), label: 'DailyMed' }], 'FDA labels for ' + v.products.join(', ')) : slotView('vax:labels', { linkout: [{ url: linkout('dailymed', v.products[0]), label: 'DailyMed' }, { url: linkout('fda_cber', ''), label: 'FDA CBER' }], emptyMsg: 'openFDA returned no label for these product names. Vaccine labels are authoritative on DailyMed / FDA CBER.', render: function (d) {
         return H`<div class="ow-stack">${d.items.slice(0, 6).map(function (r) { var x = r.data, sec = x.sections || {};
           return H`<div class="ow-card"><div class="ow-card-head"><div><div class="ow-card-title">${r.title}</div><div class="ow-card-sub">${x.generic.join('; ')} · ${x.manufacturer.join('; ')} · effective ${fdaDate(x.effective)}</div></div><div class="ow-badges">${confBadge(x.confidence)}${badge('vaccine-label-section', 'vax')}</div></div>
             ${sec.indications_and_usage ? det('vxi' + r.key, 'Indications and usage (source text)', more('vxim' + r.key, sec.indications_and_usage, 600)) : ''}${sec.warnings_and_cautions ? det('vxw' + r.key, 'Warnings and precautions (source text)', more('vxwm' + r.key, sec.warnings_and_cautions, 600)) : ''}${sec.pregnancy ? det('vxp' + r.key, 'Pregnancy section (source text)', more('vxpm' + r.key, sec.pregnancy, 600)) : ''}
@@ -4944,13 +4989,13 @@ function reproAEView() {
   var s = slot('fert:ae');
   return H`<div class="ow-card ow-section"><div class="ow-card-title">Structured reproductive adverse-event terms (openFDA FAERS)</div>
     <p class="ow-small ow-muted">Counts of reports listing reproductive-health MedDRA terms with ${dr}. ${SAFETY.drugAE} Counts are not rates and are not a risk score.</p>
-    ${s.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-ae">${icon('alert')}Load reproductive AE terms (openFDA, user-triggered)</button>` : slotView('fert:ae', { skeleton: 1, linkout: [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], emptyMsg: 'No reproductive-health terms appear among the reported reaction terms for this drug.', render: function (d) {
+    ${s.status === 'idle' ? autoAct('fert:ae:' + dr, 'fert-ae', {}, [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], 'reproductive adverse-event terms (openFDA)') : slotView('fert:ae', { skeleton: 1, linkout: [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], emptyMsg: 'No reproductive-health terms appear among the reported reaction terms for this drug.', render: function (d) {
       return H`${bars(d.items.map(function (x) { return [titleCase(x.term), x.count]; }), { label: 'Reproductive adverse-event terms (report counts)', color: 'var(--ow-fert)', max: 20 })}<p class="ow-subtle">Scanned the top ${num(d.scanned)} reported reaction terms. ${badge('Passive surveillance', 'warn')} ${badge('structured-reproductive-adverse-event-term', 'fert')}</p>${provView(d.prov)}`; } })}</div>`;
 }
 function fertTrials(term, label) {
   var key = 'fert:trials';
   var cur = ui('fert').trialTerm;
-  return H`<div class="ow-section">${sectionHead(label || 'Onco-Fertility trials', ['ctgov'])}${!cur || cur !== term ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-trials" data-term="${term}">${icon('trial')}Load trials: “${term}”</button>` : trialMini(key)}</div>`;
+  return H`<div class="ow-section">${sectionHead(label || 'Onco-Fertility trials', ['ctgov'])}${!cur || cur !== term ? autoAct('fert:trials:' + term, 'fert-trials', { 'data-term': term }, [{ url: linkout('ctgov', term), label: 'ClinicalTrials.gov' }], 'trials for “' + term + '”') : trialMini(key)}</div>`;
 }
 function fertLens(tab) {
   var f = fertCtx(), c = State.ctx, dr = fertDrug();
@@ -4975,8 +5020,8 @@ function fertLens(tab) {
         <div class="ow-card-foot">${extBtn('https://www.cancer.gov/about-cancer/causes-prevention/genetics', 'NCI: cancer genetics')}${extBtn(linkout('asrm', ''), 'ASRM practice documents')}</div></div>`;
     case 'devices': var ds = slot('fert:devices');
       return H`${cur}<div class="ow-notice ow-notice-warn">${icon('alert')}<div>${SAFETY.devices} ${SAFETY.lag} ${SAFETY.ldt}</div></div>
-      <div class="ow-card ow-section"><div class="ow-card-title">Reproductive and ART laboratory device records (openFDA, user-triggered)</div><div class="ow-row">${FERT_TOPICS.devices.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-devices" data-term="${t}">${icon('device')}${t}</button>`; })}</div>
-        ${ds.status === 'idle' ? '' : slotView('fert:devices', { skeleton: 2, linkout: [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], emptyMsg: 'openFDA returned no device authorizations for this term (records may lag the official database).', render: function (d) { return H`<p class="ow-subtle">Term: “${ui('fert').devTerm}”. ${num(d.items.length)} records shown.</p><div class="ow-stack">${d.items.slice(0, 12).map(function (r) { return authCard(r); })}</div>`; } })}
+      <div class="ow-card ow-section"><div class="ow-card-title">Reproductive and ART laboratory device records (openFDA)</div><div class="ow-row">${FERT_TOPICS.devices.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-devices" data-term="${t}">${icon('device')}${t}</button>`; })}</div>
+        ${ds.status === 'idle' ? autoAct('fert:devices', 'fert-devices', { 'data-term': FERT_TOPICS.devices[0] }, [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], 'device records for “' + FERT_TOPICS.devices[0] + '”') : slotView('fert:devices', { skeleton: 2, linkout: [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], emptyMsg: 'openFDA returned no device authorizations for this term (records may lag the official database).', render: function (d) { return H`<p class="ow-subtle">Term: “${ui('fert').devTerm}”. ${num(d.items.length)} records shown.</p><div class="ow-stack">${d.items.slice(0, 12).map(function (r) { return authCard(r); })}</div>`; } })}
         <div class="ow-card-foot">${extBtn(linkout('fda-510k', ''), 'FDA 510(k)')}${extBtn(linkout('fda-pma', ''), 'FDA PMA')}${extBtn(linkout('fda-classification', ''), 'FDA product classification')}</div></div>
       <p class="ow-subtle">Ovarian tissue cryopreservation and similar procedures are labeled with a regulatory status only where a source record reports one.</p>`;
     case 'trials': return H`${cur}${f || dr ? H`<div class="ow-section">${sectionHead('Trials for the current query', ['ctgov'])}${trialMini('trials:list')}</div>` : ''}${fertTrials('fertility preservation', 'Fertility-preservation trials')}`;
@@ -5018,12 +5063,15 @@ registerModule({
    MODULE 6: BIOLOGY (Ensembl, MyGene, MyVariant, UniProt + Tier B enrichment)
    ==================================================================== */
 var BIO_TABS = [['gene', 'Gene Lens'], ['variant', 'Variant Interpreter'], ['protein', 'Protein Biology'], ['pathways', 'Pathways'], ['interactions', 'Interactions'], ['structure', 'Structure'], ['genomics', 'Cancer Genomics'], ['targets', 'Target Validation'], ['gwas', 'GWAS / Traits'], ['expression', 'Expression & Protein Context'], ['go', 'Gene Ontology Context']];
-// "Try live" block for verify-mode sources: nothing is requested until the user presses the button.
+// Live block for the extra public sources: requested automatically when the section is shown;
+// if the source cannot be reached, the official link-out is shown instead.
 function tryLive(key, srcId, what, label, attrs, render, linkouts, emptyMsg) {
-  var s = slot(key), src = SRC[srcId], rt = Runtime[srcId];
+  var s = slot(key), src = SRC[srcId];
   var lo2 = arr(linkouts).length ? arr(linkouts) : [{ url: linkout(srcId, ''), label: 'Open ' + src.displayName }];
-  if (s.status === 'idle') return H`<div class="ow-trylive"><button type="button" class="ow-btn ow-btn-sm" data-act="try-live" data-what="${what}" ${raw(attrs || '')}>${icon('refresh')}${label}</button>
-    <span class="ow-subtle">${rt && rt.mode === 'live' ? badge('Verified live this session', 'good') : badge('Not yet verified for oncotics.com', 'warn')} Sends a request directly to ${src.displayName}.</span>${lo2.map(function (l) { return ext(l.url, l.label); })}</div>`;
+  if (s.status === 'idle') {
+    var a = { 'data-what': what }; String(attrs || '').replace(/data-([\w-]+)="([^"]*)"/g, function (m, k, v) { a['data-' + k] = v.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); return m; });
+    return autoAct('live:' + key, 'try-live', a, lo2, src.displayName);
+  }
   return slotView(key, { skeleton: 1, linkout: lo2, emptyMsg: emptyMsg || 'No records from ' + src.displayName + '.', render: render });
 }
 function bioGene() {
@@ -5144,26 +5192,26 @@ function bioSub(tab) {
     return H`${slotView('bio:string', { linkout: [{ url: linkout('string', g), label: 'Open STRING interaction network' }], emptyMsg: 'STRING returned no partners.', render: function (d) {
       return H`${stringSvg(g, d.items.slice(0, 12))}${table([{ label: 'Partner', render: function (x) { return H`<button type="button" class="ow-linkbtn" data-act="search-as" data-term="${x.partner}" data-type="gene">${x.partner}</button>`; } }, { label: 'Combined score', render: function (x) { return x.score != null ? Number(x.score).toFixed(3) : '—'; } }, { label: 'Experimental', key: 'escore' }, { label: 'Database', key: 'dscore' }, { label: 'Text-mining', key: 'tscore' }], d.items, 'STRING functional partners (human, top 20)')}<p class="ow-subtle" style="margin-top:6px">${SRC.string.attribution} Scores are confidence estimates of functional association, not proof of physical binding.</p>`; } })}
       <div class="ow-card-foot">${extBtn(linkout('string', g), 'Open STRING interaction network')}${extBtn(linkout('intact', g), 'IntAct')}${extBtn(linkout('biogrid', g), 'BioGRID')}</div>
-      <div class="ow-section">${sectionHead('Curated complexes (Complex Portal)', ['complex_portal'])}${tryLive('bio:complex', 'complex_portal', 'complex', 'Try live request: Complex Portal complexes containing ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${table([{ label: 'Complex', render: function (x) { return ext(LINK.complex(x.ac), x.name); } }, { label: 'Accession', render: function (x) { return H`<span class="ow-mono">${x.ac}</span>`; } }, { label: 'Predicted', render: function (x) { return x.predicted ? badge('Predicted', 'warn') : badge('Curated', 'good'); } }, { label: 'Description', render: function (x) { return trunc(x.description || '', 160); } }], d.items, num(d.total) + ' complexes')}${provView(d.prov)}`; }, [{ url: linkout('complex_portal', g), label: 'Complex Portal' }])}</div>`;
+      <div class="ow-section">${sectionHead('Curated complexes (Complex Portal)', ['complex_portal'])}${tryLive('bio:complex', 'complex_portal', 'complex', 'Complex Portal complexes containing ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${table([{ label: 'Complex', render: function (x) { return ext(LINK.complex(x.ac), x.name); } }, { label: 'Accession', render: function (x) { return H`<span class="ow-mono">${x.ac}</span>`; } }, { label: 'Predicted', render: function (x) { return x.predicted ? badge('Predicted', 'warn') : badge('Curated', 'good'); } }, { label: 'Description', render: function (x) { return trunc(x.description || '', 160); } }], d.items, num(d.total) + ' complexes')}${provView(d.prov)}`; }, [{ url: linkout('complex_portal', g), label: 'Complex Portal' }])}</div>`;
   }
   if (tab === 'structure') {
     if (!g && !bioAcc()) return needGene;
     return H`<div class="ow-grid-2"><div class="ow-card">${sectionHead('AlphaFold predicted model', ['alphafold'])}${slotView('bio:alphafold', { skeleton: 1, linkout: [{ url: linkout('alphafold', g || ''), label: 'Search AlphaFold DB' }], emptyMsg: 'No AlphaFold model for this accession.', render: function (d) { var m = d.model;
         return H`<dl class="ow-kv"><dt>Model</dt><dd>${ext(LINK.alphafold(bioAcc()), m.id)}</dd><dt>Mean pLDDT</dt><dd>${m.plddt != null ? m.plddt : nr()}</dd><dt>pLDDT bands</dt><dd>very high ${pct(m.veryHigh || 0, 1)} · confident ${pct(m.confident || 0, 1)} · low ${pct(m.low || 0, 1)} · very low ${pct(m.veryLow || 0, 1)}</dd><dt>Version</dt><dd>${orNR(m.version)}</dd><dt>Files</dt><dd>${m.pdbUrl ? ext(m.pdbUrl, 'PDB') : ''} ${m.cifUrl ? ext(m.cifUrl, 'mmCIF') : ''} ${m.paeImageUrl ? ext(m.paeImageUrl, 'PAE image') : ''}</dd></dl><p class="ow-subtle">Predicted structures are computational models. No 3D viewer is loaded; files open at the source.</p>`; } })}</div>
-      <div class="ow-card">${sectionHead('Best experimental structures (PDBe)', ['pdbe'])}${bioAcc() ? tryLive('bio:pdbe', 'pdbe', 'pdbe', 'Try live request: PDBe best structures for ' + bioAcc(), '', function (d) { return H`${table([{ label: 'PDB', render: function (x) { return ext(LINK.pdbe(x.pdb), x.pdb); } }, { label: 'Chain', key: 'chain' }, { label: 'Coverage', render: function (x) { return x.coverage != null ? pct(x.coverage, 1) : '—'; } }, { label: 'Resolution (Å)', key: 'resolution' }, { label: 'Method', key: 'method' }, { label: 'UniProt range', render: function (x) { return x.start + '–' + x.end; } }], d.items.slice(0, 15), num(d.total) + ' mapped structures (PDBe ranking)')}${provView(d.prov)}`; }, [{ url: linkout('pdbe', bioAcc()), label: 'PDBe-KB' }]) : H`<p class="ow-subtle">Load the protein first (UniProt accession needed).</p>`}</div>
-      <div class="ow-card">${sectionHead('Domains and sites (EBI Proteins API)', ['ebi_proteins'])}${bioAcc() ? tryLive('bio:features', 'ebi_proteins', 'ebi_proteins', 'Try live request: EBI Proteins features for ' + bioAcc(), '', function (d) { return H`${table([{ label: 'Type', key: 'type' }, { label: 'Description', key: 'description' }, { label: 'Range', render: function (x) { return x.begin + (x.end && x.end !== x.begin ? '–' + x.end : ''); } }, { label: 'Evidence items', key: 'evidence' }], d.items.slice(0, 40))}${provView(d.prov)}`; }) : H`<p class="ow-subtle">Load the protein first.</p>`}</div>
+      <div class="ow-card">${sectionHead('Best experimental structures (PDBe)', ['pdbe'])}${bioAcc() ? tryLive('bio:pdbe', 'pdbe', 'pdbe', 'PDBe best structures for ' + bioAcc(), '', function (d) { return H`${table([{ label: 'PDB', render: function (x) { return ext(LINK.pdbe(x.pdb), x.pdb); } }, { label: 'Chain', key: 'chain' }, { label: 'Coverage', render: function (x) { return x.coverage != null ? pct(x.coverage, 1) : '—'; } }, { label: 'Resolution (Å)', key: 'resolution' }, { label: 'Method', key: 'method' }, { label: 'UniProt range', render: function (x) { return x.start + '–' + x.end; } }], d.items.slice(0, 15), num(d.total) + ' mapped structures (PDBe ranking)')}${provView(d.prov)}`; }, [{ url: linkout('pdbe', bioAcc()), label: 'PDBe-KB' }]) : H`<p class="ow-subtle">Load the protein first (UniProt accession needed).</p>`}</div>
+      <div class="ow-card">${sectionHead('Domains and sites (EBI Proteins API)', ['ebi_proteins'])}${bioAcc() ? tryLive('bio:features', 'ebi_proteins', 'ebi_proteins', 'EBI Proteins features for ' + bioAcc(), '', function (d) { return H`${table([{ label: 'Type', key: 'type' }, { label: 'Description', key: 'description' }, { label: 'Range', render: function (x) { return x.begin + (x.end && x.end !== x.begin ? '–' + x.end : ''); } }, { label: 'Evidence items', key: 'evidence' }], d.items.slice(0, 40))}${provView(d.prov)}`; }) : H`<p class="ow-subtle">Load the protein first.</p>`}</div>
       <div class="ow-card">${sectionHead('Experimental structures (PDB via UniProt)', ['uniprot'])}${slotView('bio:uniprot', { skeleton: 1, render: function (d) { var p = d.protein.data; return p.pdb.length ? H`${table([{ label: 'PDB', render: function (x) { return ext(LINK.pdb(x.id), x.id); } }, { label: 'Method', key: 'method' }, { label: 'Resolution', key: 'resolution' }], p.pdb.slice(0, 25))}${p.pdb.length > 25 ? H`<p class="ow-subtle">${p.pdb.length - 25} more in Protein Biology.</p>` : ''}<p class="ow-subtle">Domain context: ${p.domains.map(function (x) { return x.desc + ' ' + x.start + '–' + x.end; }).join('; ') || 'not reported'}</p>` : nr(); } })}</div></div>`;
   }
   if (tab === 'genomics') {
     if (!g) return needGene;
     var cb = slot('bio:cbio');
     return H`<div class="ow-notice ow-notice-info">${icon('info')}<div>Frequencies describe the public ${CONFIG.cbio.label} research cohort (sample IDs are not displayed). They are not individual predictions.</div></div>
-      <div class="ow-card-foot">${cb.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-primary ow-btn-sm" data-act="cbio" data-gene="${g}">${icon('dna')}Load ${g} mutation frequency (cBioPortal)</button>` : ''}${extBtn(linkout('cbioportal', g), 'Open cBioPortal')}</div>
+      <div class="ow-card-foot">${cb.status === 'idle' ? autoAct('bio:cbio:' + g, 'cbio', { 'data-gene': g }, [], g + ' mutation frequency (cBioPortal)') : ''}${extBtn(linkout('cbioportal', g), 'Open cBioPortal')}</div>
       <div class="ow-section">${slotView('bio:cbio', { linkout: [{ url: linkout('cbioportal', g), label: 'Open cBioPortal' }], emptyMsg: 'cBioPortal did not recognise this gene.', render: function (d) {
         return H`<div class="ow-stat-grid">${stat(d.mutatedSamples, 'Samples with ≥1 ' + d.gene + ' mutation', d.cohort)}${stat(d.sampleCount, 'Sequenced samples', d.cohort)}${stat(pct(d.mutatedSamples, d.sampleCount), 'Mutation frequency (samples)', 'derived by Oncotics from source counts')}${stat(d.mutationCount, 'Mutation records', 'cBioPortal')}</div>
           <div class="ow-grid-2 ow-section"><div class="ow-card"><div class="ow-card-title">Most common protein changes</div>${bars(d.byChange, { max: 15, color: 'var(--ow-variant)' })}</div><div class="ow-card"><div class="ow-card-title">Mutation types</div>${bars(d.byType.map(function (x) { return [String(x[0]).replace(/_/g, ' '), x[1]]; }), { color: 'var(--ow-protein)' })}</div></div>
           <p class="ow-subtle">Copy-number and structural-variant frequencies are not computed here. ${ext(LINK.cbioStudy(d.studyId), 'Open the study on cBioPortal')}</p>`; } })}</div>
-      <div class="ow-section">${sectionHead('NCI GDC open-access mutation occurrences by project', ['nci_gdc'])}<p class="ow-subtle">${SAFETY.gdc}</p>${tryLive('bio:gdc', 'nci_gdc', 'gdc', 'Try live request: NCI GDC aggregate for ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${bars(d.items.map(function (x) { return [x.project, x.count]; }), { label: 'GDC simple somatic mutation occurrences by project', color: 'var(--ow-gene)', max: 15 })}<p class="ow-subtle">${num(d.total)} open-access occurrences (mutation–case pairs; not unique patients). Aggregate counts only.</p>${provView(d.prov)}`; }, [{ url: linkout('nci_gdc', ''), label: 'GDC Data Portal' }])}</div>
+      <div class="ow-section">${sectionHead('NCI GDC open-access mutation occurrences by project', ['nci_gdc'])}<p class="ow-subtle">${SAFETY.gdc}</p>${tryLive('bio:gdc', 'nci_gdc', 'gdc', 'NCI GDC aggregate for ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${bars(d.items.map(function (x) { return [x.project, x.count]; }), { label: 'GDC simple somatic mutation occurrences by project', color: 'var(--ow-gene)', max: 15 })}<p class="ow-subtle">${num(d.total)} open-access occurrences (mutation–case pairs; not unique patients). Aggregate counts only.</p>${provView(d.prov)}`; }, [{ url: linkout('nci_gdc', ''), label: 'GDC Data Portal' }])}</div>
       ${c.type === 'disease' || c.disease ? H`<div class="ow-section">${sectionHead('Related cBioPortal studies', ['cbioportal'])}${slot('bio:cbioStudies').status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="cbio-studies">Find studies for “${c.disease}”</button>` : slotView('bio:cbioStudies', { emptyMsg: 'No studies matched.', render: function (d) { return table([{ label: 'Study', render: function (x) { return ext(LINK.cbioStudy(x.id), x.name); } }, { label: 'Samples', render: function (x) { return num(x.samples); } }, { label: 'Citation', key: 'citation' }], d.items); } })}</div>` : ''}`;
   }
   if (tab === 'targets') {
@@ -5172,7 +5220,7 @@ function bioSub(tab) {
       return H`<div class="ow-grid-2"><div class="ow-card"><div class="ow-card-title">Top associated diseases (${num(d.diseasesCount)} total)</div>${table([{ label: 'Disease', render: function (x) { return ext(LINK.otDisease(x.id), x.name); } }, { label: 'Score', render: function (x) { return x.score != null ? Number(x.score).toFixed(3) : '—'; } }, { label: 'Evidence types', render: function (x) { return x.types.filter(function (t) { return t.score > 0; }).map(function (t) { return t.id.replace(/_/g, ' '); }).join(', '); } }], d.diseases)}</div>
         <div class="ow-card"><div class="ow-card-title">Drugs and clinical candidates (${num(d.drugsCount)})</div>${table([{ label: 'Drug', render: function (x) { return H`<button type="button" class="ow-linkbtn" data-act="search-as" data-term="${x.name}" data-type="drug">${titleCase(x.name)}</button>`; } }, { label: 'Type', key: 'type' }, { label: 'Max stage', render: function (x) { return badge(humanEnum(x.stage), x.stage === 'APPROVAL' ? 'good' : 'outline'); } }, { label: 'ChEMBL', render: function (x) { return ext(LINK.otDrug(x.id), x.id); } }], d.drugs)}</div></div>
         <div class="ow-card-foot">${extBtn(LINK.otTarget(d.id), 'Open target on Open Targets')}</div>`; } })}</div>
-      <div class="ow-section">${sectionHead('Druggability and gene–drug interactions (DGIdb)', ['dgidb'])}<p class="ow-subtle">${SAFETY.dgidb}</p>${g ? tryLive('bio:dgidb', 'dgidb', 'dgidb', 'Try live request: DGIdb interactions for ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${table([{ label: 'Drug', render: function (x) { return H`<button type="button" class="ow-linkbtn" data-act="search-as" data-term="${x.drug}" data-type="drug">${titleCase(x.drug)}</button>${x.approved ? badge('Approved (per DGIdb)', 'good') : ''}`; } }, { label: 'Interaction type', render: function (x) { return x.types.join(', ') || '—'; } }, { label: 'Score', render: function (x) { return x.score != null ? Number(x.score).toFixed(2) : '—'; } }, { label: 'Sources', render: function (x) { return H`<span class="ow-small">${x.sources.slice(0, 4).join(', ')}</span>`; } }, { label: 'PMIDs', render: function (x) { return x.pmids.slice(0, 3).map(function (p) { return ext(LINK.pubmed(p), p); }); } }], d.items.slice(0, 25), num(d.total) + ' interactions')}${provView(d.prov)}`; }, [{ url: LINK.dgidbGene(g), label: 'DGIdb' }]) : ''}</div>
+      <div class="ow-section">${sectionHead('Druggability and gene–drug interactions (DGIdb)', ['dgidb'])}<p class="ow-subtle">${SAFETY.dgidb}</p>${g ? tryLive('bio:dgidb', 'dgidb', 'dgidb', 'DGIdb interactions for ' + g, 'data-gene="' + esc(g) + '"', function (d) { return H`${table([{ label: 'Drug', render: function (x) { return H`<button type="button" class="ow-linkbtn" data-act="search-as" data-term="${x.drug}" data-type="drug">${titleCase(x.drug)}</button>${x.approved ? badge('Approved (per DGIdb)', 'good') : ''}`; } }, { label: 'Interaction type', render: function (x) { return x.types.join(', ') || '—'; } }, { label: 'Score', render: function (x) { return x.score != null ? Number(x.score).toFixed(2) : '—'; } }, { label: 'Sources', render: function (x) { return H`<span class="ow-small">${x.sources.slice(0, 4).join(', ')}</span>`; } }, { label: 'PMIDs', render: function (x) { return x.pmids.slice(0, 3).map(function (p) { return ext(LINK.pubmed(p), p); }); } }], d.items.slice(0, 25), num(d.total) + ' interactions')}${provView(d.prov)}`; }, [{ url: LINK.dgidbGene(g), label: 'DGIdb' }]) : ''}</div>
       <div class="ow-notice ow-notice-info ow-section">${icon('info')}<div>${SRC.open_targets_genetics.lastVerifiedNote} ${extBtn(linkout('open_targets_genetics', g || ''), 'Open Targets Platform')}</div></div>`;
   }
   if (tab === 'gwas') {
@@ -5189,10 +5237,10 @@ function bioSub(tab) {
   if (tab === 'go') {
     var acc2 = bioAcc();
     return H`<p class="ow-subtle">GO annotations with evidence codes. MyGene.info GO terms appear in Gene Lens; QuickGO adds per-annotation evidence codes.</p>
-      <div class="ow-section">${sectionHead('QuickGO annotations', ['quickgo'])}${acc2 ? tryLive('bio:quickgo', 'quickgo', 'quickgo', 'Try live request: QuickGO annotations for ' + acc2, '', function (d) {
+      <div class="ow-section">${sectionHead('QuickGO annotations', ['quickgo'])}${acc2 ? tryLive('bio:quickgo', 'quickgo', 'quickgo', 'QuickGO annotations for ' + acc2, '', function (d) {
         var asp = [['biological_process', 'Biological process'], ['molecular_function', 'Molecular function'], ['cellular_component', 'Cellular component']];
         return H`<p class="ow-subtle">${num(d.total)} annotations (first 100 de-duplicated).</p><div class="ow-grid-3">${asp.map(function (a) { var l = arr(d.by[a[0]]); return H`<div class="ow-card"><div class="ow-card-title">${a[1]} (${l.length})</div><ul class="ow-small">${l.slice(0, 18).map(function (x) { return H`<li>${ext(LINK.quickgoTerm(x.id), x.name || x.id)} ${badge(x.evidence, 'outline')}${x.qualifier && x.qualifier !== 'enables' && x.qualifier !== 'involved_in' && x.qualifier !== 'located_in' ? H` <span class="ow-subtle">${x.qualifier}</span>` : ''}</li>`; })}</ul></div>`; })}</div>${provView(d.prov)}`;
-      }, [{ url: linkout('quickgo', acc2), label: 'QuickGO' }]) : H`<p class="ow-subtle">Resolve the protein first: <button type="button" class="ow-btn ow-btn-sm" data-act="bio-tab" data-tab="protein">Load protein</button></p>`}</div>`;
+      }, [{ url: linkout('quickgo', acc2), label: 'QuickGO' }]) : (slot('bio:uniprot').status === 'loading' || slot('bio:uniprot').status === 'idle' ? H`<p class="ow-row ow-muted" aria-busy="true"><span class="ow-spinner" aria-hidden="true"></span> Resolving the protein (UniProt)…</p>` : H`<div class="ow-empty"><p>No UniProt accession is available for this query from this browser. Open the official source:</p><div class="ow-card-foot">${extBtn(linkout('quickgo', bioGene() || ''), 'QuickGO')}</div></div>`)}</div>`;
   }
   return '';
 }
@@ -5250,7 +5298,7 @@ registerModule({
       var pageIdx = (u.cursors || []).length;
       return H`${view === 'table' ? table([{ label: 'Title', render: function (r) { return H`<button type="button" class="ow-linkbtn" data-act="open-rec" data-key="${r.key}">${r.data.title}</button>`; } }, { label: 'Year', render: function (r) { return r.data.year; } }, { label: 'Journal', render: function (r) { return r.data.journal; } }, { label: 'PMID', render: function (r) { return r.data.pmid || '—'; } }, { label: 'DOI', render: function (r) { return r.data.doi || '—'; } }, { label: 'OA', render: function (r) { return r.data.oa ? 'Yes' : 'No'; } }, { label: 'Cited', render: function (r) { return r.data.cited != null ? num(r.data.cited) : '—'; } }], d.items, num(d.total) + ' Europe PMC records') : H`<div class="ow-stack">${d.items.map(paperCard)}</div>`}
         ${pager('literature', { page: pageIdx, hasPrev: pageIdx > 0, hasNext: !!d.next, total: d.total, pageSize: f.pageSize, label: 'records' })}`; } });
-    return H`${moduleHead('literature', H`${viewToggle('literature')}<button type="button" class="ow-btn ow-btn-sm" data-act="copy-ids" data-kind="pmid">${icon('copy')}Copy PMIDs</button>${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="lit-institutions">${icon('globe')}Institution countries for globe (OpenAlex, try live)</button>` : ''}${extBtn(linkout('pubmed', State.ctx.label), 'PubMed')}${extBtn(linkout('openalex', State.ctx.label), 'OpenAlex')}`)}
+    return H`${moduleHead('literature', H`${viewToggle('literature')}<button type="button" class="ow-btn ow-btn-sm" data-act="copy-ids" data-kind="pmid">${icon('copy')}Copy PMIDs</button>${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? (autoRun('lit:institutions', function () { ACTIONS['lit-institutions'](); }), '') : ''}${extBtn(linkout('pubmed', State.ctx.label), 'PubMed')}${extBtn(linkout('openalex', State.ctx.label), 'OpenAlex')}`)}
       <div class="ow-disclaimer">${SAFETY.literature}</div><p class="ow-subtle">Abstract snippets are source text; Oncotics does not generate summaries of papers.</p>
       <div class="ow-section">${det('lit-filters', H`${icon('filter')} Filters and sorting`, filters, false)}</div><div class="ow-section">${list}</div>`;
   },
@@ -5266,9 +5314,9 @@ DETAIL.paper = function (r) {
     ${related.length ? H`<div class="ow-section"><h4>CIViC evidence citing this paper (loaded page)</h4><ul>${related.map(function (e) { return H`<li><button type="button" class="ow-linkbtn" data-act="open-rec" data-key="${e.key}">${e.title}</button></li>`; })}</ul></div>` : ''}
     <div class="ow-section"><h4>Citation radar (citation metadata is not clinical evidence)</h4>
       ${p.pmid || p.doi ? H`<div class="ow-stack" style="margin-top:6px">
-        <div>${sectionHead('OpenAlex', ['openalex'])}${tryLive('lit:oa:' + r.key, 'openalex', 'openalex-paper', 'Try live request: OpenAlex', 'data-key="' + r.key + '"', function (d) { var w = d.work; return H`<dl class="ow-kv"><dt>Cited by</dt><dd>${w.cited != null ? num(w.cited) : nr()}</dd><dt>References</dt><dd>${w.refs != null ? num(w.refs) : nr()}</dd><dt>Open access</dt><dd>${w.oa ? (w.oaUrl ? ext(w.oaUrl, 'Yes — open copy') : 'Yes') : 'No / unknown'}</dd><dt>Topics</dt><dd>${w.topics.join('; ') || nr()}</dd><dt>Institution countries</dt><dd>${uniq(w.institutions.map(function (i) { return i.country; }).filter(Boolean)).join(', ') || nr()}</dd></dl>${provView(d.prov)}`; })}</div>
-        ${p.doi ? H`<div>${sectionHead('Crossref', ['crossref'])}${tryLive('lit:cr:' + r.key, 'crossref', 'crossref', 'Try live request: Crossref', 'data-key="' + r.key + '"', function (d) { return H`<dl class="ow-kv"><dt>Publisher</dt><dd>${orNR(d.publisher)}</dd><dt>Type</dt><dd>${orNR(d.type)}</dd><dt>Cited by (Crossref)</dt><dd>${d.cited != null ? num(d.cited) : nr()}</dd><dt>References</dt><dd>${d.refs != null ? num(d.refs) : nr()}</dd><dt>Funders</dt><dd>${d.funders.join('; ') || nr()}</dd><dt>License</dt><dd>${d.licenses.map(function (u) { return ext(u, 'license'); })}</dd></dl>${provView(d.prov)}`; })}</div>` : ''}
-        <div>${sectionHead('Semantic Scholar', ['semantic_scholar'])}${tryLive('lit:s2:' + r.key, 'semantic_scholar', 's2', 'Try live request: Semantic Scholar (rate-limited)', 'data-key="' + r.key + '"', function (d) { var li = function (x) { return H`<li>${x.pmid ? H`<button type="button" class="ow-linkbtn" data-act="search" data-term="${'PMID ' + x.pmid}">${x.title}</button>` : x.title}${x.year ? ' (' + x.year + ')' : ''}</li>`; }; return H`<dl class="ow-kv"><dt>Citations</dt><dd>${d.cited != null ? num(d.cited) : nr()} (influential ${d.influential != null ? num(d.influential) : '—'})</dd><dt>References</dt><dd>${d.refs != null ? num(d.refs) : nr()}</dd></dl><div class="ow-grid-2"><div><h4>Some references</h4><ul class="ow-small">${d.references.map(li)}</ul></div><div><h4>Some citing papers</h4><ul class="ow-small">${d.citations.map(li)}</ul></div></div><p class="ow-subtle">AI-generated “TLDR” summaries are deliberately not requested.</p>${provView(d.prov)}`; })}</div></div>` : H`<p class="ow-subtle">Citation metadata needs a PMID or DOI.</p>`}</div>
+        <div>${sectionHead('OpenAlex', ['openalex'])}${tryLive('lit:oa:' + r.key, 'openalex', 'openalex-paper', 'OpenAlex', 'data-key="' + r.key + '"', function (d) { var w = d.work; return H`<dl class="ow-kv"><dt>Cited by</dt><dd>${w.cited != null ? num(w.cited) : nr()}</dd><dt>References</dt><dd>${w.refs != null ? num(w.refs) : nr()}</dd><dt>Open access</dt><dd>${w.oa ? (w.oaUrl ? ext(w.oaUrl, 'Yes — open copy') : 'Yes') : 'No / unknown'}</dd><dt>Topics</dt><dd>${w.topics.join('; ') || nr()}</dd><dt>Institution countries</dt><dd>${uniq(w.institutions.map(function (i) { return i.country; }).filter(Boolean)).join(', ') || nr()}</dd></dl>${provView(d.prov)}`; })}</div>
+        ${p.doi ? H`<div>${sectionHead('Crossref', ['crossref'])}${tryLive('lit:cr:' + r.key, 'crossref', 'crossref', 'Crossref', 'data-key="' + r.key + '"', function (d) { return H`<dl class="ow-kv"><dt>Publisher</dt><dd>${orNR(d.publisher)}</dd><dt>Type</dt><dd>${orNR(d.type)}</dd><dt>Cited by (Crossref)</dt><dd>${d.cited != null ? num(d.cited) : nr()}</dd><dt>References</dt><dd>${d.refs != null ? num(d.refs) : nr()}</dd><dt>Funders</dt><dd>${d.funders.join('; ') || nr()}</dd><dt>License</dt><dd>${d.licenses.map(function (u) { return ext(u, 'license'); })}</dd></dl>${provView(d.prov)}`; })}</div>` : ''}
+        <div>${sectionHead('Semantic Scholar', ['semantic_scholar'])}${tryLive('lit:s2:' + r.key, 'semantic_scholar', 's2', 'Semantic Scholar', 'data-key="' + r.key + '"', function (d) { var li = function (x) { return H`<li>${x.pmid ? H`<button type="button" class="ow-linkbtn" data-act="search" data-term="${'PMID ' + x.pmid}">${x.title}</button>` : x.title}${x.year ? ' (' + x.year + ')' : ''}</li>`; }; return H`<dl class="ow-kv"><dt>Citations</dt><dd>${d.cited != null ? num(d.cited) : nr()} (influential ${d.influential != null ? num(d.influential) : '—'})</dd><dt>References</dt><dd>${d.refs != null ? num(d.refs) : nr()}</dd></dl><div class="ow-grid-2"><div><h4>Some references</h4><ul class="ow-small">${d.references.map(li)}</ul></div><div><h4>Some citing papers</h4><ul class="ow-small">${d.citations.map(li)}</ul></div></div><p class="ow-subtle">AI-generated “TLDR” summaries are deliberately not requested.</p>${provView(d.prov)}`; })}</div></div>` : H`<p class="ow-subtle">Citation metadata needs a PMID or DOI.</p>`}</div>
     <div class="ow-disclaimer">${SAFETY.literature} ${SAFETY.citation}</div>${provView(r.prov)}`;
 };
 
@@ -5455,7 +5503,7 @@ function oncokbPanel() {
     <div class="ow-card-foot">${extBtn(url, g ? 'Open ' + g + ' on OncoKB' : 'Open OncoKB', { primary: true })}${c && c.change ? extBtn(safeUrl('https://www.oncokb.org/gene/' + encodeURIComponent(c.gene) + '/' + encodeURIComponent(c.change.label)), 'OncoKB: ' + c.gene + ' ' + c.change.label) : ''}${extBtn('https://www.oncokb.org/terms', 'OncoKB terms of use')}</div>
     ${auth ? H`<div class="ow-section"><form class="ow-row" data-submit="set-oncokb-token"><label for="ow-okb-key" class="ow-sr">OncoKB API token</label><input id="ow-okb-key" class="ow-input" type="password" autocomplete="off" spellcheck="false" placeholder="${State.keys.oncokb ? '•••••• token set (memory only)' : 'Licensed OncoKB token (memory only)'}" style="max-width:300px"><button type="submit" class="ow-btn ow-btn-sm">Set token</button>${State.keys.oncokb ? H`<button type="button" class="ow-btn ow-btn-sm ow-btn-danger" data-act="clear-oncokb">Remove token</button>` : ''}</form>
       <p class="ow-subtle">Tokens are kept in memory only, are not secrets in a browser, and are cleared by refresh or Clear Session.</p>
-      ${State.keys.oncokb && c && c.change ? (s.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="ek-oncokb">Load licensed OncoKB annotation for ${c.gene} ${c.change.label}</button>` : slotView('ek:oncokb', { skeleton: 1, render: function (d) {
+      ${State.keys.oncokb && c && c.change ? (s.status === 'idle' ? autoAct('ek:oncokb:' + c.gene + ':' + c.change.label, 'ek-oncokb', {}, [{ url: linkout('oncokb', c.gene), label: 'OncoKB' }], 'licensed OncoKB annotation for ' + c.gene + ' ' + c.change.label) : slotView('ek:oncokb', { skeleton: 1, render: function (d) {
         return H`<dl class="ow-kv"><dt>Oncogenic</dt><dd>${orNR(d.oncogenic)}</dd><dt>Mutation effect</dt><dd>${orNR(d.effect)}</dd><dt>Highest sensitivity level</dt><dd>${orNR(d.highestSensitive)}</dd><dt>Highest resistance level</dt><dd>${orNR(d.highestResistance)}</dd><dt>Data version</dt><dd>${orNR(d.dataVersion)}</dd></dl>
           ${d.treatments.length ? table([{ label: 'Drugs', key: 'drugs' }, { label: 'Level', key: 'level' }, { label: 'Cancer type', key: 'cancer' }], d.treatments) : ''}<p class="ow-subtle">Licensed content: shown in this session only and excluded from all exports.</p>${provView(d.prov)}`; } })) : ''}</div>`
       : H`<p class="ow-subtle">The optional authenticated OncoKB mode is turned off on this deployment until OncoKB’s terms and browser access are verified for oncotics.com. No OncoKB content is fetched.</p>`}</div>`;
@@ -5526,7 +5574,7 @@ var ADV = [
   { id: 'pubchem', label: 'PubChem compound properties', params: [{ id: 'name', label: 'compound name', def: 'osimertinib' }, { id: 'props', label: 'properties', def: 'MolecularFormula,MolecularWeight' }], build: function (v) { return { src: 'pubchem', url: SRC.pubchem.apiBase + '/compound/name/' + encodeURIComponent(v.name || '') + '/property/' + encodeURIComponent(v.props || 'MolecularFormula').replace(/%2C/g, ',') + '/JSON' }; } },
   { id: 'ols', label: 'EBI OLS search', params: [{ id: 'q', label: 'q', def: 'melanoma' }, { id: 'ontology', label: 'ontology', def: 'mondo,ncit' }, { id: 'rows', label: 'rows', def: '5' }], build: function (v) { return { src: 'ols', url: SRC.ols.apiBase + '/search?' + qs(v) }; } }
 ];
-// Final curated extra layer (verify-mode sources run only on explicit Run) + link-out builders.
+// Final curated extra layer (API resources run live) + link-out builders.
 function loBuild(src, tpl) { return function (v) { return { src: src, url: tpl ? safeUrl(tpl.replace('{q}', encodeURIComponent(v.q || ''))) : linkout(src, v.q || ''), linkout: true }; }; }
 ADV.push(
   { id: 'fda-vaccine-label', label: 'openFDA biologic / vaccine label (where returned)', params: [{ id: 'search', label: 'search', def: 'openfda.brand_name:"GARDASIL 9"' }, { id: 'limit', label: 'limit', def: '5' }], build: fdaBuild('/drug/label.json', 'openfda-drug') },
@@ -5595,7 +5643,7 @@ registerModule({
         <div class="ow-filters" style="margin-top:8px">${res.params.map(function (p) { return p.area ? H`<div class="ow-field" style="grid-column:1/-1"><label class="ow-label" for="adv-${p.id}">${p.label}</label><textarea class="ow-input ow-mono" rows="5" id="adv-${p.id}" data-adv="${p.id}" spellcheck="false">${v[p.id] || ''}</textarea></div>` : H`<div class="ow-field"><label class="ow-label" for="adv-${p.id.replace(/\./g, '-')}">${p.label}</label><input class="ow-input" id="adv-${p.id.replace(/\./g, '-')}" data-adv="${p.id}" value="${v[p.id] || ''}" placeholder="${p.ph || ''}" autocomplete="off" spellcheck="false"></div>`; })}</div>
         ${res.narrativeWarning ? H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div>Device event records can contain source-reported narrative text (mdr_text). Do not copy patient-identifying detail.</div></div>` : ''}
         ${warns.map(function (w) { return H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div>${w}</div></div>`; })}
-        ${!req.linkout && SRC[req.src] && SRC[req.src].defaultMode === 'verify' ? H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div>${SRC[req.src].displayName} is a verify-mode source: it has not been CORS-verified from oncotics.com. Run sends a live attempt; on failure use the official link-out.</div></div>` : ''}
+        ${!req.linkout && SRC[req.src] && !SRC[req.src].corsVerified ? H`<div class="ow-notice ow-notice-info" style="margin-top:8px">${icon('info')}<div>${SRC[req.src].displayName} has not yet been CORS-confirmed from oncotics.com. If the request fails, use the official link-out.</div></div>` : ''}
         <div class="ow-card-foot"><button type="submit" class="ow-btn ow-btn-primary">${icon(req.linkout ? 'ext' : 'search')}${req.linkout ? 'Open official source' : 'Run Query'}</button><button type="button" class="ow-btn" data-act="adv-preview">Update preview</button><span class="ow-subtle">Provider: ${SRC[req.src].displayName} · ${SRC[req.src].rateLimitPolicy || ''}</span></div>
         ${det('adv-tech', 'Technical details (raw request)', H`<pre class="ow-code">${(req.method || 'GET') + ' ' + req.url + (req.body ? '\n\n' + JSON.stringify(req.body, null, 2) : '')}</pre><p class="ow-subtle">Headers: Accept: application/json${req.body ? ', Content-Type: application/json' : ''}. cache: no-store, credentials: omit, referrerPolicy: no-referrer.</p>`, true)}</form>
       <div class="ow-section">${out.status === 'idle' ? '' : slotView('adv:result', { render: function (d) { var txt2 = JSON.stringify(d.data, null, 2) || ''; return H`<div class="ow-card"><div class="ow-card-title">Raw source response ${badge('Source-reported', 'outline')} ${/^openfda-device/.test(d.src) ? lagBadge() : ''}</div><p class="ow-subtle">${num(txt2.length)} characters${txt2.length > 60000 ? ' (first 60,000 shown)' : ''}. Retrieved ${timeStr(d.at)} (this session).</p><pre class="ow-code" tabindex="0">${txt2.slice(0, 60000)}</pre></div>`; } })}</div>`;
@@ -5634,7 +5682,7 @@ registerModule({
   count: function () { return null; },
   render: function () {
     return H`${moduleHead('coverage-console', H`<button type="button" class="ow-btn ow-btn-sm" data-act="probe-all">${icon('refresh')}Check availability (all live)</button><button type="button" class="ow-btn ow-btn-sm" data-act="retry">Retry failed</button><button type="button" class="ow-btn ow-btn-sm" data-act="copy-session">${icon('copy')}Copy session JSON</button><button type="button" class="ow-btn ow-btn-sm" data-act="export-csv">Export visible results</button>`)}
-      <div class="ow-notice ow-notice-info">${icon('info')}<div>Verify-mode sources are documented public APIs that were not yet CORS-verified from oncotics.com; they are never called automatically. Imaging sources are used only on the separate Imaging Workbench page and are never contacted from this page.</div></div>
+      <div class="ow-notice ow-notice-info">${icon('info')}<div>All API sources are called automatically as you search. Sources marked “CORS to be confirmed” have not yet been confirmed from oncotics.com; if one cannot be reached, its official link-out is shown. Imaging sources are used only on the separate Imaging Workbench page and are never contacted from this page.</div></div>
       <p class="ow-subtle">In-memory status for this page session only. Nothing is probed on page load; checks run only when you press a button. Untick \u201cUse live\u201d to stop requests to a source for this session (its official link-out stays available). Refresh clears everything.</p>
       ${table([
         { label: 'Source', render: function (s) { return H`<strong>${s.displayName}</strong><div class="ow-subtle">${s.kind}</div>`; } }, { label: 'Tier', key: 'tier' },
@@ -5717,7 +5765,7 @@ function helpContent() {
     <div><h4>Evidence and trial badges</h4><p class="ow-small">${levelBadge('A')} validated · ${levelBadge('B')} clinical · ${levelBadge('C')} case study · ${levelBadge('D')} preclinical · ${sigBadge('SENSITIVITYRESPONSE')} ${sigBadge('RESISTANCE')} · ${statusBadge('RECRUITING')} ${statusBadge('ACTIVE_NOT_RECRUITING')} ${statusBadge('TERMINATED')} · ${recallBadge('Class I')}</p></div>
     <div><h4>Source coverage</h4><p class="ow-small">${badge('Live', 'good')} queried by your browser · ${badge('Link-out', 'outline')} opens the official site · ${badge('Unavailable', 'bad')} failed this session (use Retry) · ${badge('Derived', 'derived')} link computed by Oncotics with a confidence label.</p></div>
     <div><h4>Interpretation confidence</h4><p class="ow-small">Overview lists every plausible reading of your query with a heuristic 0–100 routing score (${badge('Very High 90–100', 'good')} ${badge('High 75–89', 'teal')} ${badge('Medium 50–74', 'warn')} ${badge('Low 25–49', 'bad')}). ${SAFETY.interpretation} Ambiguous or low-scoring queries wait for your choice before any source is queried.</p></div>
-    <div><h4>Live, verify and link-out sources</h4><p class="ow-small">${badge('Live', 'good')} CORS-verified and used by default · ${badge('Verify', 'warn')} documented public API not yet verified from oncotics.com, used only when you press “Try live request” · ${badge('Link-out', 'outline')} official site opens in a new tab · ${badge('Patient education', 'edu')} · ${badge('AI-derived', 'ai')} · ${badge('Community / developer', 'dev')} · ${badge('License-restricted', 'warn')}.</p></div>
+    <div><h4>Live and link-out sources</h4><p class="ow-small">${badge('Live', 'good')} called automatically by your browser as you search; if a source cannot be reached, its official link-out is shown instead · ${badge('Link-out', 'outline')} official site opens in a new tab · ${badge('Patient education', 'edu')} · ${badge('AI-derived', 'ai')} · ${badge('Community / developer', 'dev')} · ${badge('License-restricted', 'warn')}.</p></div>
     <div class="ow-grid-2"><div><h4>Vaccines</h4><p class="ow-small">${SAFETY.vaccines} ${SAFETY.vaers}</p></div><div><h4>Onco-Fertility</h4><p class="ow-small">${SAFETY.fertility}</p></div></div>
     <div class="ow-grid-2"><div><h4>Geographic Activity Globe</h4><p class="ow-small">${SAFETY.globePrivacy} Every marker has an accessible list row. Marker size reflects counts, not clinical importance.</p></div><div><h4>Molecular Context Map</h4><p class="ow-small">${SAFETY.molmap} Solid lines are source-reported; dashed lines are derived; dotted lines are link-outs. A table fallback is always available.</p></div></div>
     <div><h4>Imaging Workbench</h4><p class="ow-small">Images are handled only on the separate <a href="${CONFIG.imagingUrl}" target="_blank" rel="noopener noreferrer">Imaging Workbench</a> page (OHIF Viewer), in browser memory, after consent. ${SAFETY.dicom} AI inference there is experimental, opt-in and never automatic.</p></div>
@@ -5841,14 +5889,16 @@ function enrichFromVep(d, gen) {
 }
 function executePlan(c) {
   var gen = State.gen;
+  var loadDgidbGene = function () { if (c.gene) load('bio:dgidb', 'dgidb', function (s) { return Loaders.dgidbGene(s, c.gene); }); };
+  var loadCancerType = function (t) { if (!t) return; load('ont:oncotree', 'oncotree', function (s) { return Loaders.oncotree(s, t); }); load('bio:gdcProjects', 'nci_gdc', function (s) { return Loaders.gdcProjects(s, t); }); };
   var civicAssert = function () { if (civicScope(c)) load('civic:assertions', 'civic', function (s) { return Loaders.civicAssertions(s, civicScope(c)); }); };
   switch (c.type) {
     case 'gene':
       load('gene:mygene', 'mygene', function (s) { return Loaders.mygene(s, c.gene); });
-      loadEvidence(); civicAssert(); loadTrials(); loadLit(); break;
+      loadEvidence(); civicAssert(); loadTrials(); loadLit(); loadDgidbGene(); break;
     case 'variant':
       if (c.change) load('var:myvariant', 'myvariant', function (s) { return Loaders.myvariant(s, c); });
-      loadEvidence(); civicAssert(); loadTrials(); loadLit(); break;
+      loadEvidence(); civicAssert(); loadTrials(); loadLit(); loadDgidbGene(); break;
     case 'rsid':
       load('var:myvariant', 'myvariant', async function (s) { var d = await Loaders.myvariant(s, c); setTimeout(function () { enrichFromVariant(d, gen); }, 0); return d; });
       loadLit(); break;
@@ -5860,9 +5910,10 @@ function executePlan(c) {
       load('drug:labels', 'openfda-drug', function (s) { return Loaders.drugLabels(s, c); });
       load('drug:approvals', 'openfda-drug', function (s) { return Loaders.drugsFda(s, c); });
       load('drug:rxnorm', 'rxnorm', function (s) { return Loaders.rxnorm(s, c); });
+      load('drug:dgidb', 'dgidb', function (s) { return Loaders.dgidbDrug(s, c.drug); });
       loadTrials(); loadLit(); loadEvidence(); break;
     case 'disease':
-      loadTrials(); loadEvidence(); loadLit(); load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.disease); }); break;
+      loadTrials(); loadEvidence(); loadLit(); load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.disease); }); loadCancerType(c.disease); break;
     case 'nct':
       load('trial:detail:' + c.nct, 'ctgov', function (s) { return Loaders.trial(s, c.nct); }); loadLit(); break;
     case 'regid': loadTrials(); loadLit(); break;
@@ -5896,7 +5947,7 @@ function executePlan(c) {
     case 'concept':
       loadTrials(); loadLit();
       load('civic:search', 'civic', function (s) { return Loaders.civicSearch(s, c.concept); });
-      if (!c.biomarker) load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); });
+      if (!c.biomarker) { load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); }); if (/cancer|carcinoma|tumou?r|neoplasm|leuka?emia|lymphoma|myeloma|sarcoma|melanoma|glioma|blastoma|mesothelioma/i.test(c.concept)) loadCancerType(c.concept); }
       if (c.geneHint) loadEvidence();
       break;
     default: break;
@@ -6261,7 +6312,7 @@ var CHANGES = {
 
 /* ====================================================================
    ACTIONS / SUBMITS / CHANGES for interpretation, globe, molecular map,
-   verify-mode sources, vaccines, Onco-Fertility, imaging context, expert.
+   extra public sources, vaccines, Onco-Fertility, imaging context, expert.
    (Inserted into 14-app.js by build.sh before EVENT WIRING.)
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
@@ -6309,7 +6360,7 @@ Object.assign(ACTIONS, {
       if (fmt === 'csv') download(CONFIG.exportNames.molmap + '.csv', 'text/csv;charset=utf-8', '﻿' + toCSV(x.edges.map(function (e) { var f = x.nodes.find(function (n) { return n.id === e.from; }), t = x.nodes.find(function (n) { return n.id === e.to; }); return Object.assign({ fromLabel: f ? f.label : e.from, toLabel: t ? t.label : e.to }, e); }), [{ label: 'From', key: 'fromLabel' }, { label: 'Relationship', key: 'relationship' }, { label: 'To', key: 'toLabel' }, { label: 'Source', key: 'source' }, { label: 'Category', key: 'category' }, { label: 'Confidence', key: 'confidence' }, { label: 'Derived', key: 'derived' }]));
       else download(CONFIG.exportNames.molmap + '.json', 'application/json', JSON.stringify({ metadata: exportMeta(), note: SAFETY.molmap, graph: x }, null, 2)); });
   },
-  // ---- Verify-mode sources (explicit user action only)
+  // ---- Extra public sources (started automatically by the section that shows them)
   'try-live': function (el) {
     var w = el.getAttribute('data-what'), c = State.ctx, g = el.getAttribute('data-gene') || bioGene(), key = el.getAttribute('data-key'), rec = key ? State.records.get(key) : null;
     var withAcc = function (k, src, fn) { load(k, src, async function (sg) { await ensureProtein(); var a = bioAcc(); if (!a) return { empty: true }; return fn(sg, a); }); };
@@ -6333,7 +6384,7 @@ Object.assign(ACTIONS, {
   'fert-ae': function () { var dr = fertDrug(); if (dr) load('fert:ae', 'openfda-drug', function (sg) { return Loaders.reproAE(sg, { drug: dr, brand: State.ctx && State.ctx.brand }); }); },
   'fert-trials': function (el) { var t = el.getAttribute('data-term'); ui('fert').trialTerm = t; load('fert:trials', 'ctgov', function (sg) { return Loaders.trials(sg, { type: 'concept', trialTerm: t, label: t }, { pageSize: 10 }); }, { force: true }); },
   'fert-devices': function (el) { var t = el.getAttribute('data-term'); ui('fert').devTerm = t; load('fert:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); },
-  'img-devices': function () { var c = State.ctx; if (!c) return; var t = c.imaging ? c.imaging.concept : c.label; load('img:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); toast('Loading imaging device records from openFDA (may lag official DB)…'); },
+  'img-devices': function () { var c = State.ctx; if (!c) return; var t = c.imaging ? c.imaging.concept : c.label; load('img:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); },
   'ek-oncokb': function () { load('ek:oncokb', 'oncokb', function (sg) { return Loaders.oncokb(sg, State.ctx); }, { force: true }); },
   'clear-oncokb': function () { State.keys.oncokb = ''; State.slots.delete('ek:oncokb'); toast('OncoKB token removed from memory.'); scheduleRender(); },
   'clear-s2': function () { State.keys.s2 = ''; Net.clearMemo(); toast('Semantic Scholar key removed from memory.'); scheduleRender(); }

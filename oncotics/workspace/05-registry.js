@@ -70,7 +70,7 @@ var SOURCES = [
     attribution: 'Literature data provided by Europe PMC / EMBL-EBI.', privacyNote: 'Queries are sent directly to www.ebi.ac.uk.', safetyNote: SAFETY.literature,
     rateLimitPolicy: 'Fair use; bursts may be throttled (HTTP 503 without CORS headers appears as a network error)', concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 25000, lastVerifiedNote: V, featureFlag: 'europepmc', mayLagOfficialDb: false },
 
-  // ---------------- Tier B: enrichment (lazy / user-triggered) ----------------
+  // ---------------- Tier B: enrichment (loaded when the section is shown) ----------------
   { id: 'rxnorm', displayName: 'RxNorm / RxNav', region: 'United States', kind: 'Drug vocabulary', tier: 'B', defaultMode: 'live', corsVerified: true,
     apiBase: 'https://rxnav.nlm.nih.gov/REST', endpoints: ['/drugs.json', '/rxcui.json', '/rxcui/{rxcui}/related.json'],
     linkoutSearchUrlTemplate: 'https://mor.nlm.nih.gov/RxNav/search?searchBy=String&searchTerm={q}', linkoutDetailUrlTemplate: 'https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm={id}',

@@ -3,14 +3,15 @@
    SOURCE CAPABILITY REGISTRY: FINAL CURATED EXTRA LAYER
    --------------------------------------------------------------------
    Modes (defaultMode / runtime mode):
-     live                   CORS + shape verified; used by default.
-     verify                 Documented public read-only API, NOT yet CORS-
-                            verified from https://oncotics.com. Never called
-                            automatically. A user can (a) press "Check" in the
-                            Coverage Console or (b) press an explicit "Try live
-                            request" button. On success the runtime mode becomes
-                            "live" for this page session only; on failure the
-                            official link-out is shown.
+     live                   Public read-only API called automatically by the
+                            browser as the user searches. Sources with
+                            corsVerified:true were verified from a browser
+                            origin; the others are called the same way and,
+                            if the browser cannot reach them (CORS, network,
+                            rate limit), the section shows the official
+                            link-out instead.
+     verify                 Reserved: called only from an explicit user action.
+                            No source uses this mode by default.
      linkout                Official site opened directly by the browser.
      authenticated-optional Needs a user-supplied key/token (memory only) AND a
                             feature flag; link-out otherwise.
@@ -20,13 +21,14 @@
      ai-derived-optional    AI-derived outputs; verify-only, separately labeled.
      imaging-source         Used only by the separate Imaging Workbench page.
      unavailable / download Not usable live from a browser.
-   Nothing in this block was CORS-verified from the real origin at build
-   time (the build environment could not reach these hosts), so every new
-   API entry is "verify". Promote to "live" only after verifying from
-   https://oncotics.com (Coverage Console > Check availability) and updating
-   corsVerified / lastVerifiedNote here.
-   ==================================================================== */
-var VERIFY_NOTE = 'Not yet CORS-verified from https://oncotics.com. Never called automatically; use “Check” in the Coverage Console or an explicit “Try live request” button. Falls back to the official link-out.';
+   Nothing in this block could be CORS-verified from the real origin at build
+   time (the build environment could not reach these hosts). The API entries
+   are nevertheless "live" (called automatically), with corsVerified:false;
+   any that fail from the browser fall back to their official link-outs.
+   Confirm from https://oncotics.com (Coverage Console > Check availability)
+   and set corsVerified / lastVerifiedNote here.
+   ==== */
+var VERIFY_NOTE = 'Called automatically as you search. Not yet CORS-confirmed from https://oncotics.com; if your browser cannot reach it, the official link-out is shown instead.';
 Object.assign(CONFIG, {
   features: {
     oncokbAuthenticated: false,   // optional OncoKB token flow: off until terms + CORS are verified for oncotics.com
@@ -103,7 +105,7 @@ var FLAG_DEFS = [
   ['imagingDicomSensitive', 'Imaging / DICOM sensitive', 'img'], ['globeLocationSource', 'Globe location source', 'globe'], ['externalTileProviderPossible', 'External tile provider possible', 'warn'],
   ['controlledAccessProhibited', 'Controlled access prohibited', 'outline'], ['memoryOnlyImageProcessing', 'Memory-only image processing', 'good'], ['safetySurveillanceAggregateOnly', 'Aggregate surveillance only', 'warn']
 ];
-function mkSrc(o) { return Object.assign({ tier: 'B', defaultMode: 'verify', corsVerified: false, language: 'English', publicDataOnly: true, controlledAccessProhibited: true, lastVerifiedNote: VERIFY_NOTE, concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 15000 }, o); }
+function mkSrc(o) { return Object.assign({ tier: 'B', defaultMode: 'live', corsVerified: false, language: 'English', publicDataOnly: true, controlledAccessProhibited: true, lastVerifiedNote: VERIFY_NOTE, concurrencyLimit: 1, minIntervalMs: 400, timeoutMs: 15000 }, o); }
 function lo(o) { return mkSrc(Object.assign({ tier: 'C', defaultMode: 'linkout', lastVerifiedNote: 'Official link-out (opened by your browser). Template should be spot-checked before release.', verify: true }, o)); }
 var EXTRA_SOURCES = [
   // ---- A. Cancer ontology and cohort context
@@ -190,7 +192,7 @@ SOURCES.forEach(function (s) {
   SRC[s.id] = s;
   if (s.concurrencyLimit == null) s.concurrencyLimit = 1; if (!s.timeoutMs) s.timeoutMs = CONFIG.defaultTimeoutMs;
   if (s.publicDataOnly == null) s.publicDataOnly = true; if (s.controlledAccessProhibited == null) s.controlledAccessProhibited = true;
-  s.status = s.status || (s.defaultMode === 'live' ? (s.corsVerified ? 'verified' : 'verify') : s.defaultMode === 'verify' ? 'verify (live candidate)' : s.defaultMode);
+  s.status = s.status || (s.defaultMode === 'live' ? (s.corsVerified ? 'verified' : 'live (CORS to be confirmed)') : s.defaultMode);
   if (!s.featureFlag) s.featureFlag = s.id;
 });
 var FETCHABLE_MODES = { live: 1, verify: 1, 'rate-limited': 1, unavailable: 1 };

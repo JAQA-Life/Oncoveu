@@ -72,8 +72,7 @@ var Net = (function () {
     var s = SRC[src], rt = Runtime[src];
     if (!s) throw mkErr('config', src);
     if (!FETCHABLE_MODES[rt.mode]) throw mkErr('linkout', src);
-    // "verify" sources are never called automatically: only an explicit user action
-    // (Coverage Console check or a "Try live request" button) may attempt them.
+    // A source configured as "verify" (none by default) is called only from an explicit user action.
     if (rt.mode === 'verify' && !opts.tryVerify && !opts.force) { rt.skipped++; throw mkErr('verify', src); }
     if (State.prefs.disabledSources && State.prefs.disabledSources.has(src)) { rt.skipped++; throw mkErr('disabled', src); }
     if (rt.mode === 'unavailable' && !opts.force) { rt.skipped++; throw mkErr('unavailable', src); }
@@ -147,7 +146,7 @@ function friendlyError(e) {
     case 'network': return 'Live request unavailable from this browser: ' + name + ' could not be reached (it may be temporarily down, rate-limiting, or blocking browser access). Open the source directly.';
     case 'unavailable': return name + ' is marked unavailable for this session after an earlier failure. Use Retry to try again, or open the official source.';
     case 'linkout': return 'This source is link-out only. Open the official source instead.';
-    case 'verify': return name + ' has not been verified for browser access from oncotics.com yet, so Oncotics does not call it automatically. Use “Try live request” to attempt it now, or open the official source.';
+    case 'verify': return name + ' is not called automatically in this configuration. Open the official source instead.';
     case 'auth': return name + ' needs a licensed token that you supply (kept in memory only). Open the official source instead.';
     case 'disabled': return 'You turned off live requests to ' + name + ' for this session (Coverage Console). Open the official source instead.';
     case 'server': return 'This source is temporarily unavailable. You can open the official source instead.';

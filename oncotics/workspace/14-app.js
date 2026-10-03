@@ -93,14 +93,16 @@ function enrichFromVep(d, gen) {
 }
 function executePlan(c) {
   var gen = State.gen;
+  var loadDgidbGene = function () { if (c.gene) load('bio:dgidb', 'dgidb', function (s) { return Loaders.dgidbGene(s, c.gene); }); };
+  var loadCancerType = function (t) { if (!t) return; load('ont:oncotree', 'oncotree', function (s) { return Loaders.oncotree(s, t); }); load('bio:gdcProjects', 'nci_gdc', function (s) { return Loaders.gdcProjects(s, t); }); };
   var civicAssert = function () { if (civicScope(c)) load('civic:assertions', 'civic', function (s) { return Loaders.civicAssertions(s, civicScope(c)); }); };
   switch (c.type) {
     case 'gene':
       load('gene:mygene', 'mygene', function (s) { return Loaders.mygene(s, c.gene); });
-      loadEvidence(); civicAssert(); loadTrials(); loadLit(); break;
+      loadEvidence(); civicAssert(); loadTrials(); loadLit(); loadDgidbGene(); break;
     case 'variant':
       if (c.change) load('var:myvariant', 'myvariant', function (s) { return Loaders.myvariant(s, c); });
-      loadEvidence(); civicAssert(); loadTrials(); loadLit(); break;
+      loadEvidence(); civicAssert(); loadTrials(); loadLit(); loadDgidbGene(); break;
     case 'rsid':
       load('var:myvariant', 'myvariant', async function (s) { var d = await Loaders.myvariant(s, c); setTimeout(function () { enrichFromVariant(d, gen); }, 0); return d; });
       loadLit(); break;
@@ -112,9 +114,10 @@ function executePlan(c) {
       load('drug:labels', 'openfda-drug', function (s) { return Loaders.drugLabels(s, c); });
       load('drug:approvals', 'openfda-drug', function (s) { return Loaders.drugsFda(s, c); });
       load('drug:rxnorm', 'rxnorm', function (s) { return Loaders.rxnorm(s, c); });
+      load('drug:dgidb', 'dgidb', function (s) { return Loaders.dgidbDrug(s, c.drug); });
       loadTrials(); loadLit(); loadEvidence(); break;
     case 'disease':
-      loadTrials(); loadEvidence(); loadLit(); load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.disease); }); break;
+      loadTrials(); loadEvidence(); loadLit(); load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.disease); }); loadCancerType(c.disease); break;
     case 'nct':
       load('trial:detail:' + c.nct, 'ctgov', function (s) { return Loaders.trial(s, c.nct); }); loadLit(); break;
     case 'regid': loadTrials(); loadLit(); break;
@@ -148,7 +151,7 @@ function executePlan(c) {
     case 'concept':
       loadTrials(); loadLit();
       load('civic:search', 'civic', function (s) { return Loaders.civicSearch(s, c.concept); });
-      if (!c.biomarker) load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); });
+      if (!c.biomarker) { load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); }); if (/cancer|carcinoma|tumou?r|neoplasm|leuka?emia|lymphoma|myeloma|sarcoma|melanoma|glioma|blastoma|mesothelioma/i.test(c.concept)) loadCancerType(c.concept); }
       if (c.geneHint) loadEvidence();
       break;
     default: break;
@@ -513,7 +516,7 @@ var CHANGES = {
 
 /* ====================================================================
    ACTIONS / SUBMITS / CHANGES for interpretation, globe, molecular map,
-   verify-mode sources, vaccines, Onco-Fertility, imaging context, expert.
+   extra public sources, vaccines, Onco-Fertility, imaging context, expert.
    (Inserted into 14-app.js by build.sh before EVENT WIRING.)
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
@@ -561,7 +564,7 @@ Object.assign(ACTIONS, {
       if (fmt === 'csv') download(CONFIG.exportNames.molmap + '.csv', 'text/csv;charset=utf-8', '﻿' + toCSV(x.edges.map(function (e) { var f = x.nodes.find(function (n) { return n.id === e.from; }), t = x.nodes.find(function (n) { return n.id === e.to; }); return Object.assign({ fromLabel: f ? f.label : e.from, toLabel: t ? t.label : e.to }, e); }), [{ label: 'From', key: 'fromLabel' }, { label: 'Relationship', key: 'relationship' }, { label: 'To', key: 'toLabel' }, { label: 'Source', key: 'source' }, { label: 'Category', key: 'category' }, { label: 'Confidence', key: 'confidence' }, { label: 'Derived', key: 'derived' }]));
       else download(CONFIG.exportNames.molmap + '.json', 'application/json', JSON.stringify({ metadata: exportMeta(), note: SAFETY.molmap, graph: x }, null, 2)); });
   },
-  // ---- Verify-mode sources (explicit user action only)
+  // ---- Extra public sources (started automatically by the section that shows them)
   'try-live': function (el) {
     var w = el.getAttribute('data-what'), c = State.ctx, g = el.getAttribute('data-gene') || bioGene(), key = el.getAttribute('data-key'), rec = key ? State.records.get(key) : null;
     var withAcc = function (k, src, fn) { load(k, src, async function (sg) { await ensureProtein(); var a = bioAcc(); if (!a) return { empty: true }; return fn(sg, a); }); };
@@ -585,7 +588,7 @@ Object.assign(ACTIONS, {
   'fert-ae': function () { var dr = fertDrug(); if (dr) load('fert:ae', 'openfda-drug', function (sg) { return Loaders.reproAE(sg, { drug: dr, brand: State.ctx && State.ctx.brand }); }); },
   'fert-trials': function (el) { var t = el.getAttribute('data-term'); ui('fert').trialTerm = t; load('fert:trials', 'ctgov', function (sg) { return Loaders.trials(sg, { type: 'concept', trialTerm: t, label: t }, { pageSize: 10 }); }, { force: true }); },
   'fert-devices': function (el) { var t = el.getAttribute('data-term'); ui('fert').devTerm = t; load('fert:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); },
-  'img-devices': function () { var c = State.ctx; if (!c) return; var t = c.imaging ? c.imaging.concept : c.label; load('img:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); toast('Loading imaging device records from openFDA (may lag official DB)…'); },
+  'img-devices': function () { var c = State.ctx; if (!c) return; var t = c.imaging ? c.imaging.concept : c.label; load('img:devices', 'openfda-device', function (sg) { return Loaders.devAuth(sg, { type: 'device', deviceText: t, deviceTerm: t, label: t }); }, { force: true }); },
   'ek-oncokb': function () { load('ek:oncokb', 'oncokb', function (sg) { return Loaders.oncokb(sg, State.ctx); }, { force: true }); },
   'clear-oncokb': function () { State.keys.oncokb = ''; State.slots.delete('ek:oncokb'); toast('OncoKB token removed from memory.'); scheduleRender(); },
   'clear-s2': function () { State.keys.s2 = ''; Net.clearMemo(); toast('Semantic Scholar key removed from memory.'); scheduleRender(); }

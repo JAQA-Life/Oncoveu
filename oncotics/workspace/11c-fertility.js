@@ -43,13 +43,13 @@ function reproAEView() {
   var s = slot('fert:ae');
   return H`<div class="ow-card ow-section"><div class="ow-card-title">Structured reproductive adverse-event terms (openFDA FAERS)</div>
     <p class="ow-small ow-muted">Counts of reports listing reproductive-health MedDRA terms with ${dr}. ${SAFETY.drugAE} Counts are not rates and are not a risk score.</p>
-    ${s.status === 'idle' ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-ae">${icon('alert')}Load reproductive AE terms (openFDA, user-triggered)</button>` : slotView('fert:ae', { skeleton: 1, linkout: [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], emptyMsg: 'No reproductive-health terms appear among the reported reaction terms for this drug.', render: function (d) {
+    ${s.status === 'idle' ? autoAct('fert:ae:' + dr, 'fert-ae', {}, [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], 'reproductive adverse-event terms (openFDA)') : slotView('fert:ae', { skeleton: 1, linkout: [{ url: linkout('faers', ''), label: 'FAERS Public Dashboard' }], emptyMsg: 'No reproductive-health terms appear among the reported reaction terms for this drug.', render: function (d) {
       return H`${bars(d.items.map(function (x) { return [titleCase(x.term), x.count]; }), { label: 'Reproductive adverse-event terms (report counts)', color: 'var(--ow-fert)', max: 20 })}<p class="ow-subtle">Scanned the top ${num(d.scanned)} reported reaction terms. ${badge('Passive surveillance', 'warn')} ${badge('structured-reproductive-adverse-event-term', 'fert')}</p>${provView(d.prov)}`; } })}</div>`;
 }
 function fertTrials(term, label) {
   var key = 'fert:trials';
   var cur = ui('fert').trialTerm;
-  return H`<div class="ow-section">${sectionHead(label || 'Onco-Fertility trials', ['ctgov'])}${!cur || cur !== term ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-trials" data-term="${term}">${icon('trial')}Load trials: “${term}”</button>` : trialMini(key)}</div>`;
+  return H`<div class="ow-section">${sectionHead(label || 'Onco-Fertility trials', ['ctgov'])}${!cur || cur !== term ? autoAct('fert:trials:' + term, 'fert-trials', { 'data-term': term }, [{ url: linkout('ctgov', term), label: 'ClinicalTrials.gov' }], 'trials for “' + term + '”') : trialMini(key)}</div>`;
 }
 function fertLens(tab) {
   var f = fertCtx(), c = State.ctx, dr = fertDrug();
@@ -74,8 +74,8 @@ function fertLens(tab) {
         <div class="ow-card-foot">${extBtn('https://www.cancer.gov/about-cancer/causes-prevention/genetics', 'NCI: cancer genetics')}${extBtn(linkout('asrm', ''), 'ASRM practice documents')}</div></div>`;
     case 'devices': var ds = slot('fert:devices');
       return H`${cur}<div class="ow-notice ow-notice-warn">${icon('alert')}<div>${SAFETY.devices} ${SAFETY.lag} ${SAFETY.ldt}</div></div>
-      <div class="ow-card ow-section"><div class="ow-card-title">Reproductive and ART laboratory device records (openFDA, user-triggered)</div><div class="ow-row">${FERT_TOPICS.devices.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-devices" data-term="${t}">${icon('device')}${t}</button>`; })}</div>
-        ${ds.status === 'idle' ? '' : slotView('fert:devices', { skeleton: 2, linkout: [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], emptyMsg: 'openFDA returned no device authorizations for this term (records may lag the official database).', render: function (d) { return H`<p class="ow-subtle">Term: “${ui('fert').devTerm}”. ${num(d.items.length)} records shown.</p><div class="ow-stack">${d.items.slice(0, 12).map(function (r) { return authCard(r); })}</div>`; } })}
+      <div class="ow-card ow-section"><div class="ow-card-title">Reproductive and ART laboratory device records (openFDA)</div><div class="ow-row">${FERT_TOPICS.devices.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="fert-devices" data-term="${t}">${icon('device')}${t}</button>`; })}</div>
+        ${ds.status === 'idle' ? autoAct('fert:devices', 'fert-devices', { 'data-term': FERT_TOPICS.devices[0] }, [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], 'device records for “' + FERT_TOPICS.devices[0] + '”') : slotView('fert:devices', { skeleton: 2, linkout: [{ url: linkout('fda-510k', ''), label: 'FDA 510(k) database' }], emptyMsg: 'openFDA returned no device authorizations for this term (records may lag the official database).', render: function (d) { return H`<p class="ow-subtle">Term: “${ui('fert').devTerm}”. ${num(d.items.length)} records shown.</p><div class="ow-stack">${d.items.slice(0, 12).map(function (r) { return authCard(r); })}</div>`; } })}
         <div class="ow-card-foot">${extBtn(linkout('fda-510k', ''), 'FDA 510(k)')}${extBtn(linkout('fda-pma', ''), 'FDA PMA')}${extBtn(linkout('fda-classification', ''), 'FDA product classification')}</div></div>
       <p class="ow-subtle">Ovarian tissue cryopreservation and similar procedures are labeled with a regulatory status only where a source record reports one.</p>`;
     case 'trials': return H`${cur}${f || dr ? H`<div class="ow-section">${sectionHead('Trials for the current query', ['ctgov'])}${trialMini('trials:list')}</div>` : ''}${fertTrials('fertility preservation', 'Fertility-preservation trials')}`;

@@ -37,10 +37,15 @@ service workers, Cache Storage, geolocation, console logging and the retired pro
 
 Every source in the Workspace registry (Coverage Console) has a mode:
 
-- **live** — CORS-verified from a browser origin. Called automatically when relevant.
-- **verify** — believed browser-callable but not yet verified from https://oncotics.com. It is called
-  only when the user clicks a "Try live" action or the Advanced Query runner. Do not promote a source to
-  live until **Coverage Console → Check availability** succeeds from the production origin.
+- **live** — every source with a public browser API. It is called automatically as the user searches,
+  or when a section is first shown. There are no "Try live" buttons. If a source cannot be reached
+  from the browser (CORS, network, rate limit, missing identifier), the section shows the official
+  link-out instead.
+  - Sources first verified on 28 Sept 2026 carry `corsVerified: true`.
+  - The newer ones (OncoTree, NCI GDC, DGIdb, Complex Portal, QuickGO, PDBe, EBI Proteins, OpenAlex,
+    Crossref, Semantic Scholar) show "CORS to be confirmed" until you run
+    **Coverage Console → Check availability** from https://oncotics.com and set `corsVerified` in
+    `workspace/05b-registry-extra.js`.
 - **link-out** — opens the official site in a new tab. No request is made from the page.
 - **unavailable** — retired or not usable from a browser (for example Open Targets Genetics).
 - **imaging-source**, **patient-education**, **developer-reference** and **ai-derived-optional** —

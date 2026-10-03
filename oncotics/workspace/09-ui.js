@@ -24,6 +24,33 @@ function toast(msg) {
 /* ---- render scheduling (rAF-batched; preserves focus) ---- */
 var renderQueued = false;
 function scheduleRender() { if (renderQueued) return; renderQueued = true; requestAnimationFrame(function () { renderQueued = false; renderAll(); }); }
+
+/* ---- automatic live loading ----
+   Every section requests its public source as soon as it is shown for the current search; there is
+   no separate "try live" step. Each request starts at most once per search. If a source cannot be
+   reached from this browser (CORS, network, rate limit), the section shows the official link-out. */
+var AutoLive = { gen: -1, state: new Map() };
+function autoRun(token, fn) {
+  if (AutoLive.gen !== State.gen) { AutoLive.gen = State.gen; AutoLive.state = new Map(); }
+  if (AutoLive.state.has(token)) return false;
+  AutoLive.state.set(token, 'pending');
+  var g = State.gen;
+  setTimeout(function () {
+    if (g !== State.gen) return;
+    try { fn(); } catch (e) { /* the section falls back to its link-out */ }
+    AutoLive.state.set(token, 'done'); scheduleRender();
+  }, 0);
+  return true;
+}
+function autoPending(token) { return AutoLive.gen === State.gen && AutoLive.state.get(token) === 'pending'; }
+function actEl(attrs) { attrs = attrs || {}; return { getAttribute: function (n) { return attrs[n] != null ? String(attrs[n]) : null; } }; }
+// Runs ACTIONS[act] automatically once per search. Shows a loading row meanwhile, or the link-outs when
+// nothing could be requested (for example a required identifier is missing).
+function autoAct(token, act, attrs, linkouts, what) {
+  if (autoRun(token, function () { ACTIONS[act](actEl(attrs)); }) || autoPending(token)) return H`<p class="ow-row ow-muted" aria-busy="true"><span class="ow-spinner" aria-hidden="true"></span> Loading ${what || 'live data'}…</p>`;
+  var lo2 = arr(linkouts);
+  return H`<div class="ow-empty"><p>${what ? 'No live data available for ' + what + ' from this browser.' : 'No live data available from this browser.'}${lo2.length ? ' Open the official source:' : ''}</p>${lo2.length ? H`<div class="ow-card-foot">${lo2.map(function (l) { return extBtn(l.url, l.label); })}</div>` : ''}</div>`;
+}
 var Drafts = {};   // unsubmitted form edits (memory only), keyed by field id or name=value
 function draftKey(el) { return el.id || (el.name ? el.name + '=' + el.value : null); }
 function applyDrafts(scope) {
@@ -118,7 +145,7 @@ function renderHeader() {
     <button type="button" class="ow-btn ow-btn-sm" data-act="clear-session">${icon('trash')}<span class="ow-btn-label">Clear Session</span></button>`);
   setHTML($('#ow-pills'), PILLS.map(function (p) { return H`<button type="button" class="ow-pill" data-act="search" data-term="${p}">${p}</button>`; }));
   Array.prototype.forEach.call(ROOT.querySelectorAll('[data-ow-year]'), function (el) { el.textContent = String(YEAR); });
-  setHTML($('#ow-footer-sources'), H`Live data from CIViC, ClinicalTrials.gov (NLM), openFDA (U.S. FDA), Ensembl, UniProt, Europe PMC (EMBL-EBI), MyGene.info, MyVariant.info, RxNorm (NLM), STRING, Reactome, AlphaFold DB, Open Targets, cBioPortal, GWAS Catalog, ChEMBL, PubChem and EBI OLS. On request (verify mode): OncoTree, NCI GDC, DGIdb, Complex Portal, QuickGO, PDBe, EBI Proteins, OpenAlex, Crossref and Semantic Scholar. Official link-outs for regulators, guidelines, vaccines, reproductive health, expert knowledge, patient education and imaging resources. openFDA device records may lag official FDA databases. ${LEGAL.independent}`);
+  setHTML($('#ow-footer-sources'), H`Live data from CIViC, ClinicalTrials.gov (NLM), openFDA (U.S. FDA), Ensembl, UniProt, Europe PMC (EMBL-EBI), MyGene.info, MyVariant.info, RxNorm (NLM), STRING, Reactome, AlphaFold DB, Open Targets, cBioPortal, GWAS Catalog, ChEMBL, PubChem and EBI OLS. Also live: OncoTree, NCI GDC, DGIdb, Complex Portal, QuickGO, PDBe, EBI Proteins, OpenAlex, Crossref and Semantic Scholar. Official link-outs for regulators, guidelines, vaccines, reproductive health, expert knowledge, patient education and imaging resources. openFDA device records may lag official FDA databases. ${LEGAL.independent}`);
 }
 function applyTheme() {
   if (State.prefs.theme === 'system') ROOT.removeAttribute('data-theme'); else ROOT.setAttribute('data-theme', State.prefs.theme);
