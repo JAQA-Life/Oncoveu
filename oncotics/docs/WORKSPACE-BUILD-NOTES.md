@@ -84,6 +84,26 @@ site build copies that file to `/precision-oncology-workspace/`.
   - These are evidence-navigation views only. They do not give schedules, safety rankings, or vaccine,
     fertility, pregnancy or contraception advice.
 
+## Free-text concepts and per-module search
+- `10e-concept-fanout.js`: a query read as a **Free-text clinical concept** goes to every live source
+  that has a free-text search (30 rows; `CX_ENTRIES`).
+  - These are: ClinicalTrials.gov, Europe PMC, CIViC, OLS, OncoTree, NCI GDC, openFDA (label
+    indications, FAERS reaction counts, device 510(k)/PMA), RxNorm, MyGene, MyVariant (ClinVar
+    condition), Ensembl xrefs, UniProt, STRING, Reactome, Open Targets, cBioPortal, GWAS Catalog,
+    ChEMBL, PubChem, Complex Portal, QuickGO, PDBe, OpenAlex, Crossref and Semantic Scholar.
+  - AlphaFold, EBI Proteins and DGIdb are cascaded from the top UniProt or MyGene hit.
+  - Every row links to its official source. Failures and empty results show that link-out.
+  - Link-out-only sources are listed underneath.
+  - When no specific reading reaches Medium confidence, the query runs as a free-text concept
+    automatically instead of waiting. Confirmation is required only when two specific readings
+    are ambiguous (for example AMH).
+- Per-module search (`MOD_SEARCH` in `10-mod-a.js`, `SUBMITS['mod-search']` in `14-app.js`): every data
+  module has its own search box with its own term (memory only, cleared by Clear Session).
+  - It runs the full live search and prefers the module's entity types in order (for example Drug
+    Intelligence → drug).
+  - It keeps the user in that module.
+  - The PHI guard applies.
+
 ## CSP
 - `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'`. `'wasm-unsafe-eval'` is needed only for
   CesiumJS's WebAssembly helpers. `'unsafe-eval'` is **not** allowed.

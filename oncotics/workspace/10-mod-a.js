@@ -22,9 +22,36 @@ var MODULE_INFO = [
   ['session-privacy', 'Session & Privacy', 'lock', 'Privacy model, legal notices, optional keys and session controls.']
 ];
 function modMeta(id) { var m = MODULE_INFO.find(function (x) { return x[0] === id; }); return { id: m[0], label: m[1], icon: m[2], desc: m[3] }; }
+// Per-module search: every data module has its own search box. Its term is kept separately for that
+// module (memory only); submitting runs the full live search, prefers the module's own entity types
+// when the query can be read that way, and keeps the user in the module.
+var MOD_SEARCH = {
+  'clinical-evidence': { ph: 'Gene, variant, therapy or disease (e.g. KRAS G12C)', prefer: ['variant', 'gene', 'drug', 'disease'] },
+  'trials': { ph: 'Condition, drug, gene or NCT ID (e.g. NCT02296125)', prefer: ['nct', 'regid', 'disease', 'drug', 'gene', 'variant'] },
+  'drug-intelligence': { ph: 'Generic or brand name (e.g. osimertinib, Tagrisso)', prefer: ['drug', 'rxcui'] },
+  'vaccines-cancer-immunization': { ph: 'Vaccine or immunotherapy (e.g. HPV vaccine, sipuleucel-T)', prefer: ['vaccine'] },
+  'device-intelligence': { ph: 'Device, test, 510(k)/PMA number (e.g. K123456)', prefer: ['device'] },
+  'onco-fertility': { ph: 'Topic or therapy (e.g. fertility preservation, cyclophosphamide)', prefer: ['fertility', 'drug'] },
+  'biology': { ph: 'Gene, variant, rsID, HGVS, UniProt or Ensembl ID', prefer: ['gene', 'variant', 'rsid', 'hgvs', 'uniprot', 'ensembl'] },
+  'literature': { ph: 'Topic, PMID or DOI', prefer: ['pmid', 'doi', 'concept', 'disease', 'gene', 'drug'] },
+  'expert-knowledge': { ph: 'Gene or variant (e.g. BRAF V600E)', prefer: ['variant', 'gene'] },
+  'relationships': { ph: 'Any concept to explore relationships', prefer: [] },
+  'global-coverage': { ph: 'Any concept to check coverage', prefer: [] },
+  'comparison': { ph: 'Search a new item to compare', prefer: [] },
+  'advanced-query': null, 'session-board': null, 'coverage-console': null, 'session-privacy': null, 'overview': null
+};
+function moduleSearch(id) {
+  var cfg = MOD_SEARCH[id]; if (!cfg) return '';
+  var m = modMeta(id), v = (State.modq && State.modq[id]) || '', fid = 'ow-ms-' + id;
+  return H`<form class="ow-modsearch" role="search" data-submit="mod-search" data-mod="${id}" aria-label="Search in ${m.label}" autocomplete="off">
+    <label for="${fid}">${icon('search')}<span>Search in ${m.label}</span></label>
+    <input id="${fid}" name="q" type="search" maxlength="200" spellcheck="false" autocomplete="off" placeholder="${cfg.ph}" value="${v}">
+    <button type="submit" class="ow-btn ow-btn-primary ow-btn-sm">Search</button>
+    <span class="ow-subtle ow-small">Queries every relevant live source and stays in this module. Do not enter patient-identifying information.</span></form>`;
+}
 function moduleHead(id, extra) {
   var m = modMeta(id);
-  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>`;
+  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}`;
 }
 function slotTotal(key, field) { var s = slot(key); if (s.status === 'ok' && s.data) return field ? get(s.data, field) : (s.data.total != null ? s.data.total : arr(s.data.items).length); if (s.status === 'empty') return 0; return null; }
 function slotMark(key) { var s = slot(key); return { idle: 'not loaded', loading: 'loading…', error: 'failed', unavailable: 'unavailable', ratelimited: 'rate-limited' }[s.status] || null; }
@@ -192,6 +219,7 @@ registerModule({
     var used = uniq(Array.from(State.slots.values()).map(function (s) { return s.src; }).filter(Boolean));
     return H`${moduleHead('overview', H`<button type="button" class="ow-btn ow-btn-sm" data-act="export-json">${icon('download')}Export overview</button><button type="button" class="ow-btn ow-btn-sm" data-act="print">${icon('print')}Print</button>`)}
       ${interpretationPanel()}
+      ${conceptFanoutPanel()}
       ${imagingContextCard()}
       ${cancerTypeCard()}
       ${partialFailure() ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div><strong>Partial results.</strong> Some sources could not be loaded. Other sources are still shown. <button type="button" class="ow-linkbtn" data-act="retry">Retry failed requests</button></div></div>` : ''}

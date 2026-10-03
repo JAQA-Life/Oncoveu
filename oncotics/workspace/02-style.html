@@ -478,4 +478,20 @@
 .oncotics-workspace .ow-ek-expert { border-top-color: #B45309; } .oncotics-workspace .ow-ek-edu { border-top-color: var(--ow-teal); } .oncotics-workspace .ow-ek-ai { border-top-color: #A21CAF; } .oncotics-workspace .ow-ek-dev { border-top-color: #64748B; }
 @media (prefers-reduced-motion: reduce) { .oncotics-workspace .ow-mm-node > :first-child { transition: none; } }
 @media print { .oncotics-workspace .ow-globe-wrap { display: none; } }
+
+/* Per-module search + free-text concept fan-out */
+.oncotics-workspace .ow-modsearch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 14px; padding: 10px 12px; border: 1px solid var(--ow-border); border-radius: var(--ow-radius); background: var(--ow-surface-2); }
+.oncotics-workspace .ow-modsearch label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: .9rem; white-space: nowrap; }
+.oncotics-workspace .ow-modsearch label svg { width: 16px; height: 16px; }
+.oncotics-workspace .ow-modsearch input { flex: 1 1 260px; min-width: 0; min-height: 38px; padding: 6px 10px; border: 1px solid var(--ow-border-strong); border-radius: var(--ow-radius-sm); background: var(--ow-surface); color: var(--ow-text); font: inherit; }
+.oncotics-workspace .ow-modsearch input:focus-visible { outline: 3px solid var(--ow-focus); outline-offset: 1px; }
+.oncotics-workspace .ow-modsearch .ow-subtle { flex-basis: 100%; }
+.oncotics-workspace .ow-cx-grid { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.oncotics-workspace .ow-cx-row { border: 1px solid var(--ow-border); border-radius: var(--ow-radius-sm); padding: 10px; background: var(--ow-surface); min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.oncotics-workspace .ow-cx-row[data-status="ok"] { border-left: 3px solid var(--ow-good); }
+.oncotics-workspace .ow-cx-row[data-status="error"], .oncotics-workspace .ow-cx-row[data-status="unavailable"], .oncotics-workspace .ow-cx-row[data-status="ratelimited"] { border-left: 3px solid var(--ow-warn); }
+.oncotics-workspace .ow-cx-head strong { display: block; }
+.oncotics-workspace .ow-cx-list { margin: 4px 0 0; padding-left: 18px; font-size: .86rem; overflow-wrap: anywhere; }
+.oncotics-workspace .ow-cx-list li { margin: 2px 0; }
+@media (max-width: 600px) { .oncotics-workspace .ow-cx-grid { grid-template-columns: minmax(0, 1fr); } .oncotics-workspace .ow-modsearch label { white-space: normal; } }
 </style>

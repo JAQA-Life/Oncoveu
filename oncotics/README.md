@@ -54,6 +54,12 @@ Every source in the Workspace registry (Coverage Console) has a mode:
 License-restricted sources (OncoKB) are link-out unless both a feature flag and a user-entered token are
 present. Tokens are memory only.
 
+## Searching
+- The global search box interprets the query; see the scores in Overview → Search Interpretation.
+- Every data module also has its own **Search in <module>** box.
+- A free-text clinical concept is sent to every live source with a free-text search (30 sources), and
+  each result links to its official source.
+
 ## Docs
 
 - `docs/DEPLOY-HOSTINGER.md` — upload, checks and the release checklist.

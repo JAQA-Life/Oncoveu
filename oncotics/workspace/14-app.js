@@ -149,9 +149,12 @@ function executePlan(c) {
     case 'fertility': loadTrials(); loadLit(); break;
     case 'imaging': if (!c.imaging.workbench) { loadTrials(); loadLit(); } break;
     case 'concept':
+      // Free-text clinical concept: every live source with a free-text search is queried (see 10e).
       loadTrials(); loadLit();
       load('civic:search', 'civic', function (s) { return Loaders.civicSearch(s, c.concept); });
-      if (!c.biomarker) { load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); }); if (/cancer|carcinoma|tumou?r|neoplasm|leuka?emia|lymphoma|myeloma|sarcoma|melanoma|glioma|blastoma|mesothelioma/i.test(c.concept)) loadCancerType(c.concept); }
+      load('ont:ols', 'ols', function (s) { return Loaders.ols(s, c.concept); });
+      loadCancerType(c.concept);
+      startConceptFanout(c.concept);
       if (c.geneHint) loadEvidence();
       break;
     default: break;
@@ -180,10 +183,15 @@ function runSearch(term, opts) {
     var fk = I.candidates.find(function (x) { return x.entity && x.entity.type === opts.type; });
     if (!fk) { fk = mkCand(opts.type, 'manual', e.label, 95, 'Entity type set manually by you.', [sig('Manual entity type', 'pattern', 0, 'You')], e); fk.score = 95; fk.scoreLabel = scoreLabel(95); I.candidates.unshift(fk); }
     I.selectedKey = fk.key; I.userSelected = true; I.needsConfirm = false;
+  } else if (I.needsConfirm && !I.ambiguous && I.candidates.some(function (x) { return x.entity && x.entity.type === 'concept'; })) {
+    // Low confidence for every specific reading: run it as a free-text clinical concept across all live
+    // sources (see 10e). The interpretation panel still offers the other readings.
+    var fc = I.candidates.find(function (x) { return x.entity && x.entity.type === 'concept'; });
+    e = fc.entity; I.selectedKey = fc.key; I.needsConfirm = false; I.autoConcept = true;
   } else if (I.needsConfirm) {
-    // Ambiguous or low confidence: show candidates, query nothing until the user chooses.
+    // Ambiguous between specific readings: show candidates, query nothing until the user chooses.
     startGeneration();
-    State.entity = null; State.ctx = null; State.interp = I;
+    State.entity = null; State.ctx = null; State.interp = I; State.interpModule = opts.module && opts.module !== 'overview' ? opts.module : null;
     $('#ow-q').value = chk.value;
     setModule('overview', { quiet: true });
     announce((I.ambiguous ? 'Ambiguous query. ' : 'Low-confidence interpretation. ') + 'Choose how to treat it in the Search Interpretation panel. No source has been queried.', true);
@@ -226,7 +234,7 @@ function clearSession(silent) {
   Net.cancelAll(); Net.clearMemo();
   State.gen++; State.searchCtrl = null; State.entity = null; State.ctx = null;
   State.slots = new Map(); State.records = new Map(); State.failed.clear(); State.board = []; State.compare = {}; State.ui = {};
-  State.prefs = { theme: 'system', density: 'comfortable', hiddenModules: new Set(), disabledSources: new Set() }; State.keys = { openfda: '', s2: '', oncokb: '' }; State.interp = null;
+  State.prefs = { theme: 'system', density: 'comfortable', hiddenModules: new Set(), disabledSources: new Set() }; State.keys = { openfda: '', s2: '', oncokb: '' }; State.interp = null; State.interpModule = null; State.modq = {};
   resetGlobeState(); resetMMState();
   State.nav = []; State.navIndex = -1; State.lastFetch = null; State.conflicts = [];
   Layers.drawer = null; Layers.modal = null; Narr = null; clearDrafts();
@@ -481,6 +489,18 @@ function readAdv() {
   return { res: res, v: v };
 }
 var SUBMITS = {
+  // Per-module search (see MOD_SEARCH): prefer the module's own entity types, stay in the module.
+  'mod-search': function (f) {
+    var id = f.getAttribute('data-mod'), cfg = MOD_SEARCH[id], inp = f.querySelector('input[name="q"]'); if (!cfg || !inp) return;
+    var term = inp.value.trim(); if (!term) { inp.focus(); return; }
+    var chk = checkInput(term);
+    if (!chk.ok) { inp.value = ''; toast(PHI_MESSAGE); announce(PHI_MESSAGE, true); return; }
+    State.modq = State.modq || {}; State.modq[id] = chk.value;
+    var I = interpret(chk.value, detect(chk.value)), pick = null;
+    // Follow the module's preference order (e.g. Onco-Fertility prefers a fertility reading over a drug one).
+    cfg.prefer.some(function (t) { var pc = I.candidates.find(function (x) { return x.entity && x.entity.type === t && x.score >= 50; }); if (pc) pick = pc.key; return !!pc; });
+    if (pick) runSearch(chk.value, { pick: pick, module: id }); else runSearch(chk.value, { module: id });
+  },
   'evidence-filters': function (f) { var e = evidenceFilters(); var sv = function (id) { var el = $('#' + id); return el ? el.value.trim() : ''; };
     e.et = sv('ev-et') || null; e.sg = sv('ev-sg') || null; e.lv = sv('ev-lv') || null; e.st = sv('ev-st') || 'ACCEPTED'; e.th = sv('ev-th') || null; e.dz = sv('ev-dz') || null; e.ds = sv('ev-ds') || null;
     var so = sv('ev-sort').split('|'); e.sortCol = so[0]; e.sortDir = so[1]; e.pageSize = parseInt(sv('ev-ps'), 10) || 25;
@@ -521,7 +541,7 @@ var CHANGES = {
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
 Object.assign(ACTIONS, {
-  'interp-use': function (el) { if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key') }); },
+  'interp-use': function (el) { if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
   'interp-search': function (el) { var c = interpCand(el); if (c) runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
   'interp-refine': function () { var q = $('#ow-q'); if (q) { q.focus(); q.select(); } announce('Edit the query in the search box and press Explore.'); },
   'interp-sources': function (el) {
