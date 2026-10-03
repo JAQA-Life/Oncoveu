@@ -39,6 +39,11 @@ AddType text/javascript .mjs
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
   Header always set Cross-Origin-Opener-Policy "same-origin"
+  # Imaging Workbench (+ its same-origin OHIF iframe and ONNX Runtime workers): cross-origin isolation lets the in-browser
+  # 3D AI models use several WebAssembly threads. "credentialless" keeps CORS fetches to
+  # DICOMweb/public APIs working. Browsers without support simply run single-threaded.
+  SetEnvIf Request_URI "^/(imaging|assets/ohif|assets/ort)(/|$)" OI_ISOLATE
+  Header always set Cross-Origin-Embedder-Policy "credentialless" env=OI_ISOLATE
   # Content-Security-Policy is set per page with <meta> tags (the Workspace needs its own API allow-list).
   <FilesMatch "\.(html)$">
     Header set Cache-Control "no-cache, must-revalidate"

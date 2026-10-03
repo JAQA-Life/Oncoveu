@@ -6,10 +6,12 @@
    SHA-256, verification against the original PyTorch model).
      cxr-xrv-densenet121       chest X-ray, 18 findings incl. Mass / Nodule / Lung Lesion + activation maps
      path-camelyon16-resnet18  H&E patch tumour detector (Camelyon16) -> tumour heatmap + regions
+     brain-mri-brats-segresnet 3D brain MRI glioma segmentation (BraTS)      -> see 47-ai-3d.js
+     lung-ct-luna16-retinanet  3D chest CT lung nodule detection (LUNA16)    -> see 47-ai-3d.js
    Runs in ONNX Runtime Web (WebAssembly) in this browser; images never leave it.
    Never automatic: the user selects a pack, reviews its card and presses Run.
    ==================================================================== */
-var PACK_IDS = ['cxr-xrv-densenet121', 'path-camelyon16-resnet18'];
+var PACK_IDS = ['cxr-xrv-densenet121', 'path-camelyon16-resnet18', 'brain-mri-brats-segresnet', 'lung-ct-luna16-retinanet'];
 var PACK_BASE = '/assets/models/';
 var PACKS = { checked: false, map: {} };
 function packsCheck() {
@@ -19,7 +21,7 @@ function packsCheck() {
     if (location.protocol === 'file:') { e.status = 'missing'; return; }
     fetch(PACK_BASE + id + '/pack.json', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { if (!r.ok || /text\/html/i.test(r.headers.get('content-type') || '')) throw new Error('missing'); return r.json(); }).then(function (p) {
       if (!p || p.schema !== 'oncotics-model-pack/1' || p.id !== id || !p.card || !p.model) throw new Error('invalid');
-      e.pack = p; e.card = normCard({ card: p.card, output: { type: p.task === 'cxr-classification' ? 'classification' : 'heatmap' } }, 'local-browser'); e.status = 'available';
+      e.pack = p; e.card = normCard({ card: p.card, output: { type: p.task === 'cxr-classification' ? 'classification' : p.task === 'brain-mri-seg-3d' ? '3D segmentation (masks + volumes)' : p.task === 'lung-ct-detection-3d' ? '3D detection (boxes)' : 'heatmap' } }, 'local-browser'); e.status = 'available';
     }).catch(function () { e.status = 'missing'; }).then(scheduleRender);
   });
 }
@@ -35,10 +37,11 @@ async function packLoad(id) {
       var hex = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
       if (hex !== e.pack.sha256) throw new Error('hash');
     }
-    e.session = await ort.InferenceSession.create(new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    if (TASKS_3D[e.pack.task]) { e.bytes = buf; await workerStart(e); }   // 3D models run in a Web Worker
+    else e.session = await ort.InferenceSession.create(new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
     e.ort = ort; e.status = 'ready'; announce(e.pack.card.name + ' loaded.');
   } catch (err) {
-    e.status = 'error';
+    e.status = 'error'; workerStop(e); e.bytes = null;
     e.error = err.message === 'hash' ? 'model.onnx does not match the checksum in pack.json (corrupted or wrong upload). Upload the pack folder again.' : err.message === 'missing' ? 'model.onnx is missing next to pack.json.' : err.message === 'runtime-unavailable' ? 'The inference runtime is not deployed on this site (/assets/ort/).' : 'This browser could not load the model.';
   }
   scheduleRender();
@@ -122,5 +125,5 @@ async function runPathPack(e, img) {
 async function runPack() {
   var e = packSel(), img = curImg(); if (!e || !img) return [];
   if (e.status !== 'ready') await packLoad(e.id); if (e.status !== 'ready') throw new Error('pack-unavailable');
-  return e.pack.task === 'cxr-classification' ? runCxrPack(e, img) : runPathPack(e, img);
+  return TASKS_3D[e.pack.task] ? run3dPack(e) : e.pack.task === 'cxr-classification' ? runCxrPack(e, img) : runPathPack(e, img);
 }

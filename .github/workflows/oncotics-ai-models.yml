@@ -19,7 +19,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,3 +68,21 @@ jobs:
           (cd web && python -m http.server 8099 >/dev/null 2>&1 &)
           cd oncotics/ai && npm init -y >/dev/null && npm i --no-save playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
           node e2e_workbench.mjs http://127.0.0.1:8099 "$E2E_IMAGE" ../../e2e/ref.json
+      # End-to-end: the 3D packs in the Workbench (NIfTI upload, volume assembly, Web Worker inference)
+      # must reproduce MONAI's own pipeline (LoadImage, NormalizeIntensity / Orientation, Spacing,
+      # ScaleIntensityRange, sliding_window_inference, RetinaNetDetector) on synthetic volumes.
+      - name: MONAI references for synthetic brain MRI and chest CT volumes
+        run: |
+          D=e2e/3d; M=dist/models
+          python oncotics/ai/reference_3d.py data $D
+          python oncotics/ai/reference_3d.py dicom $D/synthetic_chest_ct.nii.gz $D/ctdicom
+          python oncotics/ai/reference_3d.py brain $M/brain-mri-brats-segresnet $D/synthetic_t1ce.nii.gz $D/synthetic_t1.nii.gz $D/synthetic_t2.nii.gz $D/synthetic_flair.nii.gz 0.5 > $D/brain_ref.json
+          python oncotics/ai/reference_3d.py lung $M/lung-ct-luna16-retinanet $D/synthetic_chest_ct.nii.gz 0.001 > $D/lung_ref.json
+          cat $D/brain_ref.json; python -c "import json; r = json.load(open('$D/lung_ref.json')); print(len(r['boxes']), 'boxes; top scores', r['scores'][:5])"
+      - name: Run the 3D models in the Imaging Workbench (Chromium)
+        run: |
+          mkdir -p web3d/imaging && cp -r web/assets web3d/assets
+          bash oncotics/ai/instrument_e2e.sh oncotics/imaging/dist/oncotics-imaging-workbench.html web3d/imaging/index.html
+          (node oncotics/ai/e2e_server.mjs web3d 8098 >/dev/null 2>&1 &)
+          sleep 2; cd oncotics/ai
+          node e2e_workbench_3d.mjs http://127.0.0.1:8098 ../../e2e/3d ../../e2e/3d/brain_ref.json ../../e2e/3d/lung_ref.json 0.5 0.001 ../../e2e/3d/ctdicom

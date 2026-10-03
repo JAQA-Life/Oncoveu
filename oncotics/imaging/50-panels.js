@@ -27,7 +27,9 @@ function grayRecord(frames, w, h, extra) {
 async function ingestDicomBuffer(buf, source, uidMaps) {
   var p = parseDicom(buf), I = p.info;
   var px = await extractPixels(p);
-  var base = { isDicom: true, source: source, modality: I.modality, spacing: I.spacing && I.spacing.length >= 2 ? I.spacing.slice(0, 2) : (I.spacing && I.spacing.length === 1 ? [I.spacing[0], I.spacing[0]] : null), spacingSource: I.spacingSource, rescaled: I.slope !== 1 || I.intercept !== 0, unitsTag: I.units || I.rescaleType || '', tech: p.tech, identity: p.identity, identityPresent: p.identityPresent, burnedIn: I.burnedIn, lossy: !!px.lossy, tsName: I.tsName, invert: !!px.invert };
+  var base = { isDicom: true, source: source, modality: I.modality, spacing: I.spacing && I.spacing.length >= 2 ? I.spacing.slice(0, 2) : (I.spacing && I.spacing.length === 1 ? [I.spacing[0], I.spacing[0]] : null), spacingSource: I.spacingSource, rescaled: I.slope !== 1 || I.intercept !== 0, unitsTag: I.units || I.rescaleType || '', tech: p.tech, identity: p.identity, identityPresent: p.identityPresent, burnedIn: I.burnedIn, lossy: !!px.lossy, tsName: I.tsName, invert: !!px.invert,
+    // Slice geometry for 3D AI (kept in memory, never displayed or exported)
+    geo: { ipp: I.ipp && I.ipp.length === 3 ? I.ipp : null, iop: I.iop && I.iop.length === 6 ? I.iop : null, thickness: I.thickness, frames: px.frames.length } };
   var rec = px.kind === 'gray' ? grayRecord(px.frames, I.cols, I.rows, Object.assign(base, { wc: I.wc, ww: I.ww })) : Object.assign(base, { kind: 'rgb', frames: px.frames, w: I.cols, h: I.rows, range: { min: 0, max: 255 }, wl: { c: 128, w: 256 }, wl0: { c: 128, w: 256 } });
   delete rec.wc; delete rec.ww;
   // Study/series grouping keys are kept in memory only (UIDs are never displayed or exported).
@@ -40,7 +42,7 @@ async function ingestFiles(fileList) {
   var files = Array.prototype.slice.call(fileList || []).slice(0, CONFIG.maxFiles), total = files.reduce(function (a, f) { return a + f.size; }, 0);
   if (!files.length) return;
   if (total > CONFIG.maxTotalMB * 1048576) { toast('These files total ' + Math.round(total / 1048576) + ' MB, above the ' + CONFIG.maxTotalMB + ' MB in-browser limit. Load fewer files or use OHIF with a DICOMweb endpoint.'); return; }
-  var ok = 0, rejected = 0, failed = {}, nameRejected = 0;
+  var ok = 0, rejected = 0, failed = {}, nameRejected = 0, batch = 'b' + (++NIFTI_BATCH.n);
   S.loading = { done: 0, total: files.length }; scheduleRender();
   for (var i = 0; i < files.length; i++) {
     var f = files[i];
@@ -48,7 +50,11 @@ async function ingestFiles(fileList) {
       if (suspiciousFilename(f.name)) { nameRejected++; continue; }        // never stored, never logged
       if (f.size > CONFIG.maxFileMB * 1048576) { rejected++; continue; }
       var isRaster = /^image\/(png|jpeg|webp|bmp|tiff)$/i.test(f.type) || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(f.name);
-      if (isRaster) {
+      if (/\.nii(\.gz)?$/i.test(f.name)) {
+        var nb = await f.arrayBuffer();
+        await ingestNifti(nb, f.name, batch);                          // only a sequence hint is derived from the name
+        nb = null;
+      } else if (isRaster) {
         var d = await decodeBitmap(f);
         addImage({ isDicom: false, source: 'local-raster', modality: 'non-DICOM', kind: 'rgb', frames: [d.rgba], w: d.w, h: d.h, range: { min: 0, max: 255 }, wl: { c: 128, w: 256 }, wl0: { c: 128, w: 256 }, spacing: null, tech: { Format: (f.type || 'image').replace('image/', '').toUpperCase(), Width: d.w, Height: d.h, Note: 'File metadata (EXIF/GPS/device) is not read and is not exported.' }, identity: {}, identityPresent: [] }, 'raster-' + (S.order.length + 1), 'raster-series-' + (S.order.length + 1), 0);
       } else {
@@ -171,7 +177,7 @@ function inferenceExport() {
   var c = S.ai.card || {};
   return Object.assign(exportMeta(), { model: { name: c.name || null, version: c.version || null, source: c.source || null, license: c.license || null, runtime: c.runtime || (S.ai.mode === 'local' ? 'local-browser' : S.ai.mode === 'remote' ? 'user-endpoint' : 'none'), regulatoryStatus: c.regulatoryStatus || 'unknown / not claimed', validationStatus: c.validationStatus || null, calibrated: c.calibrated || 'unknown' },
     threshold: S.ai.threshold, lastRun: S.ai.lastRun,
-    outputs: S.ai.results.filter(function (r) { return !r.rejected; }).map(function (r) { return { id: r.id, type: r.type, label: 'AI suggestion: ' + r.label, score: r.score, scoreMeaning: 'Model output, not clinical certainty', uncertainty: r.uncertainty, aboveThreshold: r.score == null || r.score >= S.ai.threshold, accepted: !!r.accepted, coordinates: r.box ? r.box.map(function (v) { return Math.round(v * 10) / 10; }) : r.polygon ? r.polygon.map(function (p) { return [Math.round(p.x), Math.round(p.y)]; }) : r.point ? [Math.round(r.point.x), Math.round(r.point.y)] : [], maskReference: r.mask ? 'memory-only' : undefined, input: imgRef(r.imageId), sliceIndex: r.frame || 0, provenance: 'AI-derived experimental inference' }; }),
+    outputs: S.ai.results.filter(function (r) { return !r.rejected; }).map(function (r) { return { id: r.id, type: r.type, label: 'AI suggestion: ' + r.label, score: r.score, scoreMeaning: 'Model output, not clinical certainty', uncertainty: r.uncertainty, aboveThreshold: r.score == null || r.score >= S.ai.threshold, accepted: !!r.accepted, coordinates: r.box ? r.box.map(function (v) { return Math.round(v * 10) / 10; }) : r.polygon ? r.polygon.map(function (p) { return [Math.round(p.x), Math.round(p.y)]; }) : r.point ? [Math.round(r.point.x), Math.round(r.point.y)] : [], maskReference: r.mask ? 'memory-only' : undefined, measurement: r.detail || undefined, partOf: r.group || undefined, input: imgRef(r.imageId), sliceIndex: r.frame || 0, provenance: 'AI-derived experimental inference' }; }),
     warnings: [TEXT.modelOut, TEXT.confidence, TEXT.aiWarn] });
 }
 function summaryExport() {

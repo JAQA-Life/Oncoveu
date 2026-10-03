@@ -94,27 +94,57 @@ Never point hPanel Git at the source branch (`claude/oncotics-precision-workspac
 
 ## Trained cancer AI model packs (Imaging Workbench)
 The Workbench's "Trained cancer AI models" mode uses model packs, one folder per model:
-- `cxr-xrv-densenet121`: TorchXRayVision chest X-ray model (Apache-2.0). It scores 18 findings,
-  including Mass, Nodule and Lung Lesion, and shows activation maps.
-- `path-camelyon16-resnet18`: MONAI pathology tumour detection (Apache-2.0, Camelyon16). It
-  produces a tumour heatmap over H&E tiles.
 
-Each folder holds `model.onnx`, converted from the authors' official weights, plus `pack.json`
-(model card, checksum and the numerical check against the original model).
+| Folder | Model (licence) | Input | Output | Size |
+|---|---|---|---|---|
+| `cxr-xrv-densenet121` | TorchXRayVision DenseNet-121 (Apache-2.0) | frontal chest X-ray | 18 findings incl. Mass, Nodule, Lung Lesion + activation maps | ~30 MB |
+| `path-camelyon16-resnet18` | MONAI pathology tumour detection (Apache-2.0, Camelyon16) | H&E tiles | tumour heatmap + regions | ~45 MB |
+| `brain-mri-brats-segresnet` | MONAI BraTS brain tumour segmentation, SegResNet 3D (Apache-2.0) | 4 co-registered MRI volumes: T1c, T1, T2, FLAIR | tumour core / whole tumour / enhancing tumour masks + volumes (mL) | ~18 MB |
+| `lung-ct-luna16-retinanet` | MONAI lung nodule detection, RetinaNet 3D (Apache-2.0, LUNA16) | chest CT series or NIfTI | 3D nodule candidate boxes + size | ~80 MB |
+
+Each folder holds `model.onnx`, converted from the authors' official weights, `pack.json` (model
+card, pre/post-processing, SHA-256 checksum and the numerical check against the original model) and
+the source licence/README files. The two 3D packs are checked twice in GitHub Actions: the ONNX model
+against the original PyTorch weights, and the Workbench running in Chromium against MONAI's own
+pipeline (pre-processing, sliding window, detector post-processing).
 
 1. On GitHub, open the repository, then **Actions**, then **Oncotics AI model packs**. If Actions is
    disabled, enable it once under **Settings → Actions → General → Allow all actions**.
-2. The workflow runs on every push that changes `oncotics/ai/`. You can also click
-   **Run workflow**.
-3. When it is green, open the run and download the artifact **oncotics-ai-model-packs** (a zip).
-4. Unzip it. You get the folders `cxr-xrv-densenet121` and `path-camelyon16-resnet18`.
-5. In hPanel File Manager, open `public_html/assets/`, create the folder `models` if it does not
-   exist, and upload both folders into it with all their files. You should end up with
-   `public_html/assets/models/cxr-xrv-densenet121/model.onnx`, `.../pack.json`, and the same for
-   the pathology folder.
-6. Open https://oncotics.com/imaging/ → **Experimental AI Detection & Inference** →
+2. The workflow runs on every push that changes `oncotics/ai/` or `oncotics/imaging/`. You can
+   also click **Run workflow**. A full run takes about an hour (it downloads four models and tests
+   them in a browser).
+3. When it is green, open the run and download the artifact **oncotics-ai-model-packs** (a zip,
+   about 170 MB). Artifacts are kept for 30 days; run the workflow again to get a fresh one.
+4. Unzip it. You get the four folders above.
+5. Upload them to `public_html/assets/models/`, keeping each folder with all its files:
+   - **FTP (recommended for the 80 MB lung model):** hPanel → **Files → FTP Accounts** shows the
+     host, user and password. In FileZilla, open `public_html/assets/`, create `models` if needed,
+     and drag the four folders into it.
+   - **File Manager:** open `public_html/assets/`, create `models`, open it, create a folder with
+     the exact name of each pack, open it, click **Upload** and select all files from that
+     folder of the zip. Or upload the whole zip into `public_html/assets/models/`, right-click →
+     **Extract**, and check that the folders are directly inside `models/` (not in an extra
+     sub-folder).
+   You should end up with, for example,
+   `public_html/assets/models/lung-ct-luna16-retinanet/model.onnx` and `.../pack.json`.
+6. Upload the site zip again (or at least `public_html/.htaccess`). It now sends
+   `Cross-Origin-Embedder-Policy: credentialless` on `/imaging/`, `/assets/ort/` and
+   `/assets/ohif/`, which lets Chrome, Edge and Firefox run the 3D models on several CPU threads
+   (Safari runs them on one thread).
+7. Open https://oncotics.com/imaging/ → **Experimental AI Detection & Inference** →
    **Trained cancer AI models**. Each model shows **Load model**. After loading it shows
    "checksum verified".
+
+What to expect from the 3D models (in the visitor's own browser; nothing is uploaded):
+- **Brain MRI**: load the four NIfTI files of one case (for example BraTS `*_t1ce`, `*_t1`, `*_t2`,
+  `*_flair`). The sequences are assigned automatically from the file names; check them in the
+  panel. A 240 × 240 × 155 case runs 18 windows, usually 1–5 minutes.
+- **Lung CT**: open a CT series (or NIfTI) and choose a region. A rectangle drawn around the area of
+  interest (one window) takes about 1–3 minutes; a ±30 mm slab across the body 5–20 minutes; a whole
+  scan can take an hour or more on a laptop. The panel shows an estimate before you run, progress
+  while it runs, and a **Stop** button.
+
+
 
 ## 3. Finish (both methods)
 

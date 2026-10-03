@@ -7,3 +7,5 @@ onnxscript
 onnxruntime
 numpy<2
 requests
+nibabel
+pydicom

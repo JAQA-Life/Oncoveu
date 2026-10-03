@@ -154,18 +154,20 @@ async function runInference() {
   S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running experimental inference…');
   try {
     var out = S.ai.mode === 'packs' ? await runPack() : S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
-    out.forEach(function (r) { r.id = nextAiId(); });
-    S.ai.results = S.ai.results.filter(function (r) { return r.imageId !== S.current || r.accepted; }).concat(out);
+    out.forEach(function (r) { if (!r.id) r.id = nextAiId(); });
+    var vks = out.volKeys || null, inVol = function (r) { return (r.vol && vks.indexOf(r.vol) >= 0) || (r.vols && r.vols.some(function (v) { return vks.indexOf(v) >= 0; })); };
+    S.ai.results = S.ai.results.filter(function (r) { return r.accepted || (vks ? !inVol(r) : r.imageId !== S.current); }).concat(out);
     S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'remote' ? 'user-endpoint' : 'local-browser' };
-    announce('Inference finished: ' + out.length + ' AI suggestions (experimental, not a diagnosis).');
+    announce('Inference finished: ' + out.filter(function (r) { return !r.group; }).length + ' AI suggestions (experimental, not a diagnosis).');
   } catch (e) {
     var k = e && e.message;
-    S.ai.error = k === 'pack-unavailable' ? ((packSel() && packSel().error) || 'The selected AI model pack is not available on this site.') : k === 'too-large' ? 'This image is too large for patch scoring in the browser (over 1,600 patches). Upload a smaller tile or region.' : k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
+    S.ai.error = k === 'pack-unavailable' ? ((packSel() && packSel().error) || 'The selected AI model pack is not available on this site.') : k === 'cancelled' ? 'Stopped. Nothing from the unfinished run was kept.' : k === 'brain-input' ? 'Assign four different, co-registered volumes (same matrix size) to T1c, T1, T2 and FLAIR.' : k === 'lung-rect' ? 'Select a rectangle annotation drawn on this series, or choose another region option.' : k === 'irregular' ? 'This series has irregular or duplicate slice positions, so it cannot be assembled into a 3D volume.' : k === 'no-spacing' ? 'This series has no pixel spacing, so it cannot be used by a 3D model.' : k === 'not-ct' ? 'The lung model needs a CT in Hounsfield units. Select an image of the chest CT series or CT NIfTI volume.' : k === 'no-volume' ? 'Select an image of a 3D volume first: a DICOM series with 8 or more slices or a NIfTI file.' : k === 'worker' ? 'The browser could not run the 3D model (out of memory or the model failed to load). Try a smaller region, close other tabs, or use a desktop browser.' : k === 'too-large' ? 'This image is too large for patch scoring in the browser (over 1,600 patches). Upload a smaller tile or region.' : k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
   } finally { S.ai.running = false; scheduleRender(); }
 }
 function scoreLabel(s) { return s == null ? 'not reported' : s >= 0.9 ? 'Very high' : s >= 0.75 ? 'High' : s >= 0.5 ? 'Medium' : 'Low'; }
 function acceptSuggestion(id) {
   var r = S.ai.results.find(function (x) { return x.id === id; }); if (!r) return;
+  if (r.vols) return accept3d(r);
   var a = { id: 'A' + S.nextAnn++, imageId: r.imageId, frame: r.frame || 0, label: 'unknown', provenance: 'originally AI-derived, accepted by user', aiOrigin: { suggestion: r.id, model: r.model, label: r.label, score: r.score }, createdAt: isoNow(), note: '' };
   if (r.box) { a.type = 'rect'; a.points = [{ x: r.box[0], y: r.box[1] }, { x: r.box[2], y: r.box[3] }]; }
   else if (r.polygon) { a.type = 'polygon'; a.points = r.polygon.slice(); a.closed = true; }
@@ -174,4 +176,4 @@ function acceptSuggestion(id) {
   else { toast('This suggestion type (' + r.type + ') cannot become an annotation; it remains a model output.'); return; }
   r.accepted = true; S.annotations.push(a); S.selected = a.id; toast('Accepted as user annotation ' + a.id + ' (originally AI-derived).'); scheduleRender();
 }
-function rejectSuggestion(id) { S.ai.results = S.ai.results.filter(function (x) { return x.id !== id; }); scheduleRender(); }
+function rejectSuggestion(id) { S.ai.results = S.ai.results.filter(function (x) { return x.id !== id && x.group !== id; }); scheduleRender(); }

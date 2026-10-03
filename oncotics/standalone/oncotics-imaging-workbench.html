@@ -397,9 +397,9 @@ var LONG_VR = { OB: 1, OW: 1, OF: 1, SQ: 1, UT: 1, UN: 1, OD: 1, OL: 1, OV: 1, U
 var T = {
   rows: '00280010', cols: '00280011', bitsAlloc: '00280100', bitsStored: '00280101', pixRep: '00280103', spp: '00280002', photo: '00280004', planar: '00280006', frames: '00280008',
   slope: '00281053', intercept: '00281052', wc: '00281050', ww: '00281051', spacing: '00280030', imagerSpacing: '00181164', thickness: '00180050', modality: '00080060', bodyPart: '00180015',
-  study: '0020000D', series: '0020000E', seriesNo: '00200011', instNo: '00200013', sop: '00080016', manufacturer: '00080070', model: '00081090', burned: '00280301', rescaleType: '00281054', units: '00541001', pixel: '7FE00010'
+  study: '0020000D', series: '0020000E', seriesNo: '00200011', instNo: '00200013', sop: '00080016', manufacturer: '00080070', model: '00081090', burned: '00280301', rescaleType: '00281054', units: '00541001', ipp: '00200032', iop: '00200037', pixel: '7FE00010'
 };
-var IMPLICIT_VR = {}; [[T.rows, 'US'], [T.cols, 'US'], [T.bitsAlloc, 'US'], [T.bitsStored, 'US'], [T.pixRep, 'US'], [T.spp, 'US'], [T.planar, 'US'], [T.frames, 'IS'], [T.slope, 'DS'], [T.intercept, 'DS'], [T.wc, 'DS'], [T.ww, 'DS'], [T.spacing, 'DS'], [T.imagerSpacing, 'DS'], [T.thickness, 'DS'], [T.photo, 'CS'], [T.modality, 'CS'], [T.bodyPart, 'CS'], [T.burned, 'CS'], [T.study, 'UI'], [T.series, 'UI'], [T.sop, 'UI'], [T.seriesNo, 'IS'], [T.instNo, 'IS'], [T.manufacturer, 'LO'], [T.model, 'LO'], [T.rescaleType, 'LO'], [T.units, 'CS'], [T.pixel, 'OW']].forEach(function (x) { IMPLICIT_VR[x[0]] = x[1]; });
+var IMPLICIT_VR = {}; [[T.rows, 'US'], [T.cols, 'US'], [T.bitsAlloc, 'US'], [T.bitsStored, 'US'], [T.pixRep, 'US'], [T.spp, 'US'], [T.planar, 'US'], [T.frames, 'IS'], [T.slope, 'DS'], [T.intercept, 'DS'], [T.wc, 'DS'], [T.ww, 'DS'], [T.spacing, 'DS'], [T.imagerSpacing, 'DS'], [T.thickness, 'DS'], [T.photo, 'CS'], [T.modality, 'CS'], [T.bodyPart, 'CS'], [T.burned, 'CS'], [T.study, 'UI'], [T.series, 'UI'], [T.sop, 'UI'], [T.seriesNo, 'IS'], [T.instNo, 'IS'], [T.manufacturer, 'LO'], [T.model, 'LO'], [T.rescaleType, 'LO'], [T.units, 'CS'], [T.ipp, 'DS'], [T.iop, 'DS'], [T.pixel, 'OW']].forEach(function (x) { IMPLICIT_VR[x[0]] = x[1]; });
 // Identity / potentially identifying attributes: separated, hidden by default, never exported.
 var IDENTITY_TAGS = { '00100010': 'Patient name', '00100020': 'Patient ID', '00100030': 'Birth date', '00100040': 'Sex', '00101010': 'Age', '00101000': 'Other patient IDs', '00101001': 'Other patient names', '00101040': 'Address', '00102154': 'Telephone', '00080020': 'Study date', '00080021': 'Series date', '00080022': 'Acquisition date', '00080023': 'Content date', '00080030': 'Study time',
   '00080050': 'Accession number', '00080080': 'Institution name', '00080081': 'Institution address', '00080090': 'Referring physician', '00081010': 'Station name', '00081030': 'Study description', '0008103E': 'Series description', '00081040': 'Department', '00081048': 'Physician of record', '00081050': 'Performing physician', '00081070': 'Operator', '00200010': 'Study ID', '00181000': 'Device serial number', '00181030': 'Protocol name', '00321032': 'Requesting physician', '00104000': 'Patient comments', '00204000': 'Image comments', '00380010': 'Admission ID' };
@@ -464,7 +464,7 @@ function parseDicom(buf) {
     frames: parseInt(s(T.frames) || '1', 10) || 1, photo: (s(T.photo) || 'MONOCHROME2').toUpperCase(), slope: (dsNum(T.slope) || [1])[0], intercept: (dsNum(T.intercept) || [0])[0],
     wc: dsNum(T.wc), ww: dsNum(T.ww), spacing: dsNum(T.spacing) || dsNum(T.imagerSpacing), spacingSource: dsNum(T.spacing) ? 'Pixel Spacing' : dsNum(T.imagerSpacing) ? 'Imager Pixel Spacing' : null,
     modality: s(T.modality) || 'unknown', bodyPart: s(T.bodyPart), studyUid: s(T.study), seriesUid: s(T.series), seriesNo: parseInt(s(T.seriesNo) || '0', 10) || 0, instNo: parseInt(s(T.instNo) || '0', 10) || 0,
-    burnedIn: s(T.burned), rescaleType: s(T.rescaleType), units: s(T.units)
+    burnedIn: s(T.burned), rescaleType: s(T.rescaleType), units: s(T.units), ipp: dsNum(T.ipp), iop: dsNum(T.iop), thickness: (dsNum(T.thickness) || [null])[0]
   };
   var tech = {}; TECH_LABELS.forEach(function (x) { var e2 = ds[x[0]]; if (e2) tech[x[1]] = e2.vr === 'US' ? R.us(e2, little) : R.str(e2); }); tech['Transfer syntax'] = info.tsName;
   var identity = {}, identityPresent = [];
@@ -536,7 +536,7 @@ function grayStats(a) { var mn = Infinity, mx = -Infinity; for (var i = 0; i < a
 function dicomErrorText(e) {
   var k = e && e.kind;
   return { 'not-dicom': 'Not a DICOM Part-10 file (no “DICM” marker).', 'unsupported-ts': 'This transfer syntax (' + (TS_NAMES[e.detail] || e.detail) + ') is not decoded by the Oncotics Inspector. Open it in the OHIF Viewer instead.', 'unsupported-bits': 'Unsupported bits allocated (' + e.detail + ').', 'unsupported-photo': 'Unsupported photometric interpretation (' + e.detail + '). Try the OHIF Viewer.',
-    corrupt: 'The file appears corrupted or truncated.', 'no-image': 'The DICOM object has no image matrix (it may be a report, structured report or other non-image object).', 'no-pixels': 'No pixel data found.', 'too-large': 'The image is too large for in-browser processing.', 'no-decoder': 'This browser cannot decode this image format.' }[k] || 'The file could not be read.';
+    corrupt: 'The file appears corrupted or truncated.', 'no-image': 'The DICOM object has no image matrix (it may be a report, structured report or other non-image object).', 'no-pixels': 'No pixel data found.', 'too-large': 'The image is too large for in-browser processing.', 'no-decoder': 'This browser cannot decode this image format.', 'not-nifti': 'Not a single-file NIfTI-1 image (.nii / .nii.gz).', nifti2: 'NIfTI-2 files are not supported here; save as NIfTI-1.', 'nifti-pair': 'NIfTI .hdr/.img pairs are not supported; save as a single .nii or .nii.gz file.', 'nifti-dims': 'NIfTI images with more than 4 dimensions are not supported.', 'nifti-type': 'This NIfTI data type is not supported (code ' + (e && e.detail) + ').' }[k] || 'The file could not be read.';
 }
 /* DICOMweb multipart/related responses (WADO-RS instance retrieval) */
 function parseMultipart(buf, contentType) {
@@ -553,6 +553,88 @@ function parseMultipart(buf, contentType) {
     if (u8[next + B.length] === 45 && u8[next + B.length + 1] === 45) break;
   }
   return parts;
+}
+/* ====================================================================
+   NIfTI-1 (.nii / .nii.gz) reader (memory only)
+   Reads the image matrix, voxel size and orientation (sform, else qform,
+   else pixdim). Header text fields (descrip, aux_file, intent_name) are
+   never read. Each 3D volume becomes one multi-frame image (one frame per
+   slice along the third voxel axis), displayed radiologically when the
+   affine allows it (patient right on screen left, anterior up).
+   ==================================================================== */
+async function gunzipBuffer(buf) {
+  if (typeof DecompressionStream !== 'function') throw derr('no-decoder');
+  var ds = new DecompressionStream('gzip'), out = new Response(new Blob([buf]).stream().pipeThrough(ds));
+  return out.arrayBuffer();
+}
+function niftiAffine(dv, le, pixdim) {
+  var f = function (o) { return dv.getFloat32(o, le); }, qcode = dv.getInt16(252, le), scode = dv.getInt16(254, le);
+  if (scode > 0) return [[f(280), f(284), f(288), f(292)], [f(296), f(300), f(304), f(308)], [f(312), f(316), f(320), f(324)]];
+  if (qcode > 0) {
+    var b = f(256), c = f(260), d = f(264), a = Math.sqrt(Math.max(0, 1 - (b * b + c * c + d * d))), qfac = pixdim[0] < 0 ? -1 : 1;
+    var R = [[a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)], [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b)], [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - c * c - b * b]];
+    var sp = [pixdim[1], pixdim[2], pixdim[3] * qfac];
+    return [0, 1, 2].map(function (r) { return [R[r][0] * sp[0], R[r][1] * sp[1], R[r][2] * sp[2], f(268 + 4 * r)]; });
+  }
+  return [[pixdim[1], 0, 0, 0], [0, pixdim[2], 0, 0], [0, 0, pixdim[3], 0]];
+}
+async function parseNifti(buf) {
+  var u8 = new Uint8Array(buf);
+  if (u8[0] === 0x1f && u8[1] === 0x8b) { buf = await gunzipBuffer(buf); u8 = new Uint8Array(buf); }
+  if (buf.byteLength < 352) throw derr('not-nifti');
+  var dv = new DataView(buf), le = dv.getInt32(0, true) === 348;
+  if (!le && dv.getInt32(0, false) !== 348) throw derr(dv.getInt32(0, true) === 540 || dv.getInt32(0, false) === 540 ? 'nifti2' : 'not-nifti');
+  var magic = String.fromCharCode(u8[344], u8[345], u8[346]);
+  if (magic !== 'n+1') throw derr(magic === 'ni1' ? 'nifti-pair' : 'not-nifti');
+  var dim = []; for (var i = 0; i < 8; i++) dim.push(dv.getInt16(40 + 2 * i, le));
+  var pixdim = []; for (i = 0; i < 8; i++) pixdim.push(dv.getFloat32(76 + 4 * i, le));
+  var nx = dim[1], ny = Math.max(1, dim[2]), nz = dim[0] >= 3 ? Math.max(1, dim[3]) : 1, nt = dim[0] >= 4 ? Math.max(1, dim[4]) : 1;
+  for (i = 5; i <= Math.min(7, dim[0]); i++) if (dim[i] > 1) throw derr('nifti-dims');
+  if (!(nx > 0 && ny > 0) || nx * ny > CONFIG.maxImagePixels) throw derr('too-large');
+  var dtype = dv.getInt16(70, le), off = Math.max(352, Math.round(dv.getFloat32(108, le)));
+  var T = { 2: [1, 'getUint8'], 4: [2, 'getInt16'], 8: [4, 'getInt32'], 16: [4, 'getFloat32'], 64: [8, 'getFloat64'], 256: [1, 'getInt8'], 512: [2, 'getUint16'], 768: [4, 'getUint32'] }[dtype];
+  if (!T) throw derr('nifti-type', String(dtype));
+  var nv = nx * ny * nz, need = off + nv * nt * T[0];
+  if (need > buf.byteLength) throw derr('corrupt', 'NIfTI data shorter than its header says');
+  var slope = dv.getFloat32(112, le), inter = dv.getFloat32(116, le); if (!(slope !== 0 && isFinite(slope))) { slope = 1; inter = 0; } if (!isFinite(inter)) inter = 0;
+  var aff = niftiAffine(dv, le, pixdim), sp = [0, 1, 2].map(function (a) { return Math.hypot(aff[0][a], aff[1][a], aff[2][a]) || Math.abs(pixdim[a + 1]) || 1; });
+  var dirs = [0, 1, 2].map(function (a) { return [aff[0][a] / sp[a], aff[1][a] / sp[a], aff[2][a] / sp[a]]; });   // RAS world direction of each voxel axis
+  // Radiological display: flip i if it runs toward patient right (+x), flip j if it runs toward anterior (+y).
+  var dom = function (d) { var m = 0; for (var q = 1; q < 3; q++) if (Math.abs(d[q]) > Math.abs(d[m])) m = q; return m; };
+  var flipX = dom(dirs[0]) === 0 && dirs[0][0] > 0, flipY = dom(dirs[1]) === 1 && dirs[1][1] > 0;
+  var read = dv[T[1]].bind(dv), bs = T[0], vols = [];
+  for (var t = 0; t < Math.min(nt, 8); t++) {
+    var frames = [];
+    for (var k = 0; k < nz; k++) {
+      var fr = new Float32Array(nx * ny), base = off + ((t * nz + k) * nx * ny) * bs;
+      for (var j = 0; j < ny; j++) { var y = flipY ? ny - 1 - j : j; for (var x0 = 0; x0 < nx; x0++) { var v = read(base + (j * nx + x0) * bs, le); fr[y * nx + (flipX ? nx - 1 - x0 : x0)] = v * slope + inter; } }
+      frames.push(fr);
+    }
+    vols.push(frames);
+  }
+  return { vols: vols, nt: nt, n: [nx, ny, nz], sp: sp, dirs: dirs, origin: [aff[0][3], aff[1][3], aff[2][3]], flipX: flipX, flipY: flipY, dtype: dtype, sformCode: dv.getInt16(254, le), qformCode: dv.getInt16(252, le) };
+}
+// Sequence hint for the brain model's channel assignment. Only the hint is kept; the file name is not stored.
+function seqHintFromName(name) {
+  var n = String(name || '').toLowerCase();
+  return /flair/.test(n) ? 'FLAIR' : /t1ce|t1c|t1gd|t1_?gd|t1\+c|t1post|post/.test(n) ? 'T1c' : /t2/.test(n) ? 'T2' : /t1/.test(n) ? 'T1' : /(^|[^a-z])(ct|chest|lung)([^a-z]|$)/.test(n) ? 'CT' : '';
+}
+var NIFTI_BATCH = { n: 0 };
+async function ingestNifti(buf, name, batchKey) {
+  var p = await parseNifti(buf), hint = seqHintFromName(name), n = p.n, recs = [];
+  p.vols.forEach(function (frames, t) {
+    // Window from robust volume statistics (the first slice is often empty).
+    var smp = []; for (var k = 0; k < frames.length; k++) for (var q = k % 7; q < frames[k].length; q += 53) smp.push(frames[k][q]);
+    smp.sort(function (a, b) { return a - b; }); var lo = smp[Math.floor(smp.length * 0.01)] || 0, hi = smp[Math.floor(smp.length * 0.995)] || 1; if (!(hi > lo)) hi = lo + 1;
+    var rec = grayRecord(frames, n[0], n[1], { wc: [(lo + hi) / 2], ww: [hi - lo], isDicom: false, source: 'local-nifti', modality: hint === 'CT' ? 'CT (NIfTI)' : 'NIfTI', spacing: [p.sp[1], p.sp[0]], spacingSource: 'NIfTI voxel size', rescaled: true, unitsTag: '', seqHint: p.nt > 1 ? '' : hint,
+      vol: { n: n.slice(), sp: p.sp.slice(), dirs: p.dirs, origin: p.origin, flipX: p.flipX, flipY: p.flipY, t: t, nt: p.nt },
+      tech: { Format: 'NIfTI-1' + (p.nt > 1 ? ' (volume ' + (t + 1) + ' of ' + p.nt + ')' : ''), 'Matrix (voxels)': n.join(' × '), 'Voxel size (mm)': p.sp.map(function (v) { return num(v, 3); }).join(' × '), Orientation: p.sformCode > 0 ? 'sform' : p.qformCode > 0 ? 'qform' : 'voxel size only (no orientation in header)', 'Data type code': p.dtype, 'Sequence (from file name)': p.nt > 1 ? 'not detected' : (hint || 'not detected'), Note: 'NIfTI header text fields are not read. Frames are slices along the third voxel axis.' }, identity: {}, identityPresent: [] });
+    delete rec.wc; delete rec.ww;
+    var added = addImage(rec, 'nifti-study-' + batchKey, 'nifti-series-' + (++NIFTI_BATCH.n), 0);
+    if (S.current === added.id && S.frame === 0) S.frame = Math.floor(n[2] / 2);   // open volumes on the middle slice
+    recs.push(added);
+  });
+  return recs;
 }
 
 /* ====================================================================
@@ -648,12 +730,12 @@ var Inspector = (function () {
       g.save(); g.globalAlpha = S.layers.aiOpacity;
       aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) {
         g.strokeStyle = '#F0ABFC'; g.lineWidth = 2; g.setLineDash([6, 4]);
-        if (r.mask) { g.globalAlpha = S.layers.aiOpacity; g.imageSmoothingEnabled = false; g.drawImage(maskCanvas(r.mask, [232, 121, 249], r.type === 'heatmap'), t.ox, t.oy, img.w * t.s, img.h * t.s); g.imageSmoothingEnabled = true; }
+        if (r.mask) { g.globalAlpha = S.layers.aiOpacity; g.imageSmoothingEnabled = false; g.drawImage(maskCanvas(r.mask, r.color || [232, 121, 249], r.type === 'heatmap'), t.ox, t.oy, img.w * t.s, img.h * t.s); g.imageSmoothingEnabled = true; }
         if (r.box) { var b = r.box; g.strokeRect(t.ox + b[0] * t.s, t.oy + b[1] * t.s, (b[2] - b[0]) * t.s, (b[3] - b[1]) * t.s); }
         if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); }
         if (r.point) { g.setLineDash([]); g.beginPath(); g.arc(t.ox + r.point.x * t.s, t.oy + r.point.y * t.s, 7, 0, 2 * Math.PI); g.stroke(); }
         var lp = r.box ? { x: r.box[0], y: r.box[1] } : r.polygon ? r.polygon[0] : r.point ? r.point : r.mask ? { x: r.mask.bbox[0], y: r.mask.bbox[1] } : null;
-        if (lp) { g.setLineDash([]); g.globalAlpha = Math.min(1, S.layers.aiOpacity + 0.3); g.font = '600 11px system-ui,sans-serif'; var txt = 'AI suggestion ' + r.id + ' · ' + (r.score != null ? r.score.toFixed(2) : '—'); g.fillStyle = 'rgba(30,6,40,.85)'; g.fillRect(t.ox + lp.x * t.s, t.oy + lp.y * t.s - 17, g.measureText(txt).width + 10, 16); g.fillStyle = '#F5D0FE'; g.fillText(txt, t.ox + lp.x * t.s + 5, t.oy + lp.y * t.s - 5); }
+        if (lp) { g.setLineDash([]); g.globalAlpha = Math.min(1, S.layers.aiOpacity + 0.3); g.font = '600 11px system-ui,sans-serif'; var txt = 'AI suggestion ' + (r.group || r.id) + ' · ' + (r.score != null ? r.score.toFixed(2) : '—'); g.fillStyle = 'rgba(30,6,40,.85)'; g.fillRect(t.ox + lp.x * t.s, t.oy + lp.y * t.s - 17, g.measureText(txt).width + 10, 16); g.fillStyle = '#F5D0FE'; g.fillText(txt, t.ox + lp.x * t.s + 5, t.oy + lp.y * t.s - 5); }
       });
       g.restore();
     }
@@ -743,7 +825,7 @@ var Inspector = (function () {
   function renderToCanvas(img, withOverlays) {
     var c = document.createElement('canvas'); c.width = img.w; c.height = img.h; var g = c.getContext('2d'); g.drawImage(display(img), 0, 0);
     if (withOverlays) { var saved = view, sizeEl = { clientWidth: img.w, clientHeight: img.h }; var t = { s: 1, ox: 0, oy: 0 };
-      if (S.layers.ai) aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) { g.strokeStyle = '#E879F9'; g.lineWidth = Math.max(2, img.w / 400); g.setLineDash([6, 4]); if (r.mask) g.drawImage(maskCanvas(r.mask, [232, 121, 249], r.type === 'heatmap'), 0, 0, img.w, img.h); if (r.box) g.strokeRect(r.box[0], r.box[1], r.box[2] - r.box[0], r.box[3] - r.box[1]); if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); } });
+      if (S.layers.ai) aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) { g.strokeStyle = '#E879F9'; g.lineWidth = Math.max(2, img.w / 400); g.setLineDash([6, 4]); if (r.mask) g.drawImage(maskCanvas(r.mask, r.color || [232, 121, 249], r.type === 'heatmap'), 0, 0, img.w, img.h); if (r.box) g.strokeRect(r.box[0], r.box[1], r.box[2] - r.box[0], r.box[3] - r.box[1]); if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); } });
       if (S.layers.ann) S.annotations.filter(function (a) { return a.imageId === img.id && (a.frame || 0) === S.frame; }).forEach(function (a) { g.setLineDash([]); g.strokeStyle = '#2DD4BF'; g.lineWidth = Math.max(2, img.w / 400); if (a.type === 'mask') g.drawImage(maskCanvas(a.mask, [45, 212, 191], false), 0, 0, img.w, img.h); else { shapePath(g, a, t); g.stroke(); } });
       view = saved; void sizeEl; }
     return c;
@@ -908,18 +990,20 @@ async function runInference() {
   S.ai.running = true; S.ai.error = null; scheduleRender(); announce('Running experimental inference…');
   try {
     var out = S.ai.mode === 'packs' ? await runPack() : S.ai.mode === 'builtin' ? runBuiltin() : S.ai.mode === 'sam' ? await samDetect() : S.ai.mode === 'local' ? await runLocalInference() : await runRemoteInference();
-    out.forEach(function (r) { r.id = nextAiId(); });
-    S.ai.results = S.ai.results.filter(function (r) { return r.imageId !== S.current || r.accepted; }).concat(out);
+    out.forEach(function (r) { if (!r.id) r.id = nextAiId(); });
+    var vks = out.volKeys || null, inVol = function (r) { return (r.vol && vks.indexOf(r.vol) >= 0) || (r.vols && r.vols.some(function (v) { return vks.indexOf(v) >= 0; })); };
+    S.ai.results = S.ai.results.filter(function (r) { return r.accepted || (vks ? !inVol(r) : r.imageId !== S.current); }).concat(out);
     S.ai.lastRun = { at: isoNow(), imageId: S.current, count: out.length, runtime: S.ai.mode === 'remote' ? 'user-endpoint' : 'local-browser' };
-    announce('Inference finished: ' + out.length + ' AI suggestions (experimental, not a diagnosis).');
+    announce('Inference finished: ' + out.filter(function (r) { return !r.group; }).length + ' AI suggestions (experimental, not a diagnosis).');
   } catch (e) {
     var k = e && e.message;
-    S.ai.error = k === 'pack-unavailable' ? ((packSel() && packSel().error) || 'The selected AI model pack is not available on this site.') : k === 'too-large' ? 'This image is too large for patch scoring in the browser (over 1,600 patches). Upload a smaller tile or region.' : k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
+    S.ai.error = k === 'pack-unavailable' ? ((packSel() && packSel().error) || 'The selected AI model pack is not available on this site.') : k === 'cancelled' ? 'Stopped. Nothing from the unfinished run was kept.' : k === 'brain-input' ? 'Assign four different, co-registered volumes (same matrix size) to T1c, T1, T2 and FLAIR.' : k === 'lung-rect' ? 'Select a rectangle annotation drawn on this series, or choose another region option.' : k === 'irregular' ? 'This series has irregular or duplicate slice positions, so it cannot be assembled into a 3D volume.' : k === 'no-spacing' ? 'This series has no pixel spacing, so it cannot be used by a 3D model.' : k === 'not-ct' ? 'The lung model needs a CT in Hounsfield units. Select an image of the chest CT series or CT NIfTI volume.' : k === 'no-volume' ? 'Select an image of a 3D volume first: a DICOM series with 8 or more slices or a NIfTI file.' : k === 'worker' ? 'The browser could not run the 3D model (out of memory or the model failed to load). Try a smaller region, close other tabs, or use a desktop browser.' : k === 'too-large' ? 'This image is too large for patch scoring in the browser (over 1,600 patches). Upload a smaller tile or region.' : k === 'sam-unavailable' ? (SAM.error || 'The AI model is not available on this site.') : k === 'runtime-unavailable' ? 'The local inference runtime is not deployed on this host (/assets/ort/). Ask the site operator to run scripts/fetch-vendor-assets.sh, or use a different mode.' : k === 'shape' ? 'The model output did not match the manifest (shape or type mismatch). Nothing was shown.' : /^http-/.test(k) ? 'The endpoint answered with ' + k.replace('http-', 'HTTP ') + '.' : k === 'bad-url' ? 'The endpoint URL must be https.' : k === 'network' ? 'The endpoint could not be reached (network or CORS). Nothing was sent to Oncotics.' : 'Inference failed: the model or image could not be processed.';
   } finally { S.ai.running = false; scheduleRender(); }
 }
 function scoreLabel(s) { return s == null ? 'not reported' : s >= 0.9 ? 'Very high' : s >= 0.75 ? 'High' : s >= 0.5 ? 'Medium' : 'Low'; }
 function acceptSuggestion(id) {
   var r = S.ai.results.find(function (x) { return x.id === id; }); if (!r) return;
+  if (r.vols) return accept3d(r);
   var a = { id: 'A' + S.nextAnn++, imageId: r.imageId, frame: r.frame || 0, label: 'unknown', provenance: 'originally AI-derived, accepted by user', aiOrigin: { suggestion: r.id, model: r.model, label: r.label, score: r.score }, createdAt: isoNow(), note: '' };
   if (r.box) { a.type = 'rect'; a.points = [{ x: r.box[0], y: r.box[1] }, { x: r.box[2], y: r.box[3] }]; }
   else if (r.polygon) { a.type = 'polygon'; a.points = r.polygon.slice(); a.closed = true; }
@@ -928,7 +1012,7 @@ function acceptSuggestion(id) {
   else { toast('This suggestion type (' + r.type + ') cannot become an annotation; it remains a model output.'); return; }
   r.accepted = true; S.annotations.push(a); S.selected = a.id; toast('Accepted as user annotation ' + a.id + ' (originally AI-derived).'); scheduleRender();
 }
-function rejectSuggestion(id) { S.ai.results = S.ai.results.filter(function (x) { return x.id !== id; }); scheduleRender(); }
+function rejectSuggestion(id) { S.ai.results = S.ai.results.filter(function (x) { return x.id !== id && x.group !== id; }); scheduleRender(); }
 /* ====================================================================
    AI DETECTION (built in; never automatic — every run is a click)
    Mode D  builtin: automatic candidate detection with a rule-based
@@ -1122,10 +1206,12 @@ async function aiClickAt(p) {
    SHA-256, verification against the original PyTorch model).
      cxr-xrv-densenet121       chest X-ray, 18 findings incl. Mass / Nodule / Lung Lesion + activation maps
      path-camelyon16-resnet18  H&E patch tumour detector (Camelyon16) -> tumour heatmap + regions
+     brain-mri-brats-segresnet 3D brain MRI glioma segmentation (BraTS)      -> see 47-ai-3d.js
+     lung-ct-luna16-retinanet  3D chest CT lung nodule detection (LUNA16)    -> see 47-ai-3d.js
    Runs in ONNX Runtime Web (WebAssembly) in this browser; images never leave it.
    Never automatic: the user selects a pack, reviews its card and presses Run.
    ==================================================================== */
-var PACK_IDS = ['cxr-xrv-densenet121', 'path-camelyon16-resnet18'];
+var PACK_IDS = ['cxr-xrv-densenet121', 'path-camelyon16-resnet18', 'brain-mri-brats-segresnet', 'lung-ct-luna16-retinanet'];
 var PACK_BASE = '/assets/models/';
 var PACKS = { checked: false, map: {} };
 function packsCheck() {
@@ -1135,7 +1221,7 @@ function packsCheck() {
     if (location.protocol === 'file:') { e.status = 'missing'; return; }
     fetch(PACK_BASE + id + '/pack.json', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { if (!r.ok || /text\/html/i.test(r.headers.get('content-type') || '')) throw new Error('missing'); return r.json(); }).then(function (p) {
       if (!p || p.schema !== 'oncotics-model-pack/1' || p.id !== id || !p.card || !p.model) throw new Error('invalid');
-      e.pack = p; e.card = normCard({ card: p.card, output: { type: p.task === 'cxr-classification' ? 'classification' : 'heatmap' } }, 'local-browser'); e.status = 'available';
+      e.pack = p; e.card = normCard({ card: p.card, output: { type: p.task === 'cxr-classification' ? 'classification' : p.task === 'brain-mri-seg-3d' ? '3D segmentation (masks + volumes)' : p.task === 'lung-ct-detection-3d' ? '3D detection (boxes)' : 'heatmap' } }, 'local-browser'); e.status = 'available';
     }).catch(function () { e.status = 'missing'; }).then(scheduleRender);
   });
 }
@@ -1151,10 +1237,11 @@ async function packLoad(id) {
       var hex = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
       if (hex !== e.pack.sha256) throw new Error('hash');
     }
-    e.session = await ort.InferenceSession.create(new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    if (TASKS_3D[e.pack.task]) { e.bytes = buf; await workerStart(e); }   // 3D models run in a Web Worker
+    else e.session = await ort.InferenceSession.create(new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
     e.ort = ort; e.status = 'ready'; announce(e.pack.card.name + ' loaded.');
   } catch (err) {
-    e.status = 'error';
+    e.status = 'error'; workerStop(e); e.bytes = null;
     e.error = err.message === 'hash' ? 'model.onnx does not match the checksum in pack.json (corrupted or wrong upload). Upload the pack folder again.' : err.message === 'missing' ? 'model.onnx is missing next to pack.json.' : err.message === 'runtime-unavailable' ? 'The inference runtime is not deployed on this site (/assets/ort/).' : 'This browser could not load the model.';
   }
   scheduleRender();
@@ -1238,7 +1325,445 @@ async function runPathPack(e, img) {
 async function runPack() {
   var e = packSel(), img = curImg(); if (!e || !img) return [];
   if (e.status !== 'ready') await packLoad(e.id); if (e.status !== 'ready') throw new Error('pack-unavailable');
-  return e.pack.task === 'cxr-classification' ? runCxrPack(e, img) : runPathPack(e, img);
+  return TASKS_3D[e.pack.task] ? run3dPack(e) : e.pack.task === 'cxr-classification' ? runCxrPack(e, img) : runPathPack(e, img);
+}
+/* ====================================================================
+   3D TRAINED CANCER AI (self-hosted packs; schema oncotics-model-pack/1)
+     brain-mri-brats-segresnet  MONAI brats_mri_segmentation (SegResNet): T1c+T1+T2+FLAIR
+                                -> tumour core / whole tumour / enhancing tumour masks + volumes
+     lung-ct-luna16-retinanet   MONAI lung_nodule_ct_detection (RetinaNet): chest CT
+                                -> 3D lung nodule candidate boxes
+   This file is a port of oncotics/ai/pipeline3d.py, which build_model_packs.py
+   checks against MONAI itself (NormalizeIntensity, sliding_window_inference,
+   RetinaNetDetector). The network runs in a Web Worker (ONNX Runtime Web,
+   WebAssembly) so the page stays responsive; every window can be cancelled.
+   Volumes are assembled in memory from a NIfTI file or a DICOM series
+   (ImagePositionPatient / ImageOrientationPatient). Nothing leaves the browser.
+   ==================================================================== */
+var TASKS_3D = { 'brain-mri-seg-3d': 1, 'lung-ct-detection-3d': 1 };
+var BRAIN_CH_COLORS = { 'Whole tumor': [74, 222, 128], 'Tumor core': [251, 146, 60], 'Enhancing tumor': [248, 113, 113] };
+function v3() { if (!S.ai.v3) S.ai.v3 = { ch: {}, roi: 'slab', slabMm: 30, progress: null, cancel: false, secPerTile: {} }; return S.ai.v3; }
+function is3dPack(e) { return !!(e && e.pack && TASKS_3D[e.pack.task]); }
+function cancelled() { var e = new Error('cancelled'); return e; }
+
+/* ---------------- Web Worker running the ONNX session ---------------- */
+var WORKER_SRC = [
+  'var ort = null, sess = null;',
+  'self.onmessage = async function (e) { var m = e.data; try {',
+  '  if (m.type === "init") { var mod = await import(m.ortUrl); ort = mod.InferenceSession ? mod : mod.default; ort.env.wasm.wasmPaths = m.base; ort.env.wasm.numThreads = m.threads; ort.env.wasm.proxy = false; ort.env.logLevel = "fatal";',
+  '    sess = await ort.InferenceSession.create(new Uint8Array(m.model), { executionProviders: ["wasm"], graphOptimizationLevel: "all" }); self.postMessage({ type: "ready", id: m.id }); }',
+  '  else if (m.type === "run") { var feeds = {}; feeds[m.input] = new ort.Tensor("float32", m.data, m.dims); var out = await sess.run(feeds), res = {}, tr = [];',
+  '    for (var i = 0; i < m.outputs.length; i++) { var t = out[m.outputs[i]], d = new Float32Array(t.data); res[m.outputs[i]] = { data: d, dims: Array.prototype.slice.call(t.dims) }; tr.push(d.buffer); }',
+  '    self.postMessage({ type: "out", id: m.id, out: res }, tr); }',
+  '} catch (err) { self.postMessage({ type: "error", id: m.id }); } };'
+].join('\n');
+function cpuThreads() { return window.crossOriginIsolated && typeof SharedArrayBuffer === 'function' ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1; }
+function workerStart(e) {
+  if (e.worker) return Promise.resolve(e.worker);
+  var url = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })), w;
+  try { w = new Worker(url, { type: 'module' }); } finally { setTimeout(function () { URL.revokeObjectURL(url); }, 1000); }
+  var W = { w: w, seq: 0, pending: new Map() };
+  w.onmessage = function (ev) { var m = ev.data, p = W.pending.get(m.id); if (!p) return; W.pending.delete(m.id); if (m.type === 'error') p.reject(new Error('worker')); else p.resolve(m); };
+  w.onerror = function () { W.pending.forEach(function (p) { p.reject(new Error('worker')); }); W.pending.clear(); };
+  e.worker = W;
+  var threads = cpuThreads();
+  return workerCall(e, { type: 'init', ortUrl: new URL(CONFIG.ortBase + 'ort.wasm.min.mjs', location.href).href, base: new URL(CONFIG.ortBase, location.href).href, threads: threads, model: e.bytes.slice(0) }).then(function () { return W; });
+}
+function workerCall(e, msg, transfer) {
+  var W = e.worker; if (!W) return Promise.reject(new Error('worker'));
+  return new Promise(function (resolve, reject) { msg.id = ++W.seq; W.pending.set(msg.id, { resolve: resolve, reject: reject }); W.w.postMessage(msg, transfer || (msg.model ? [msg.model] : [])); });
+}
+function workerStop(e) { if (!e || !e.worker) return; e.worker.pending.forEach(function (p) { p.reject(cancelled()); }); e.worker.w.terminate(); e.worker = null; }
+async function runWindow(e, data, dims) {
+  if (v3().cancel) throw cancelled();
+  await workerStart(e);
+  var P = e.pack, outs = (P.output.cls ? P.output.cls.concat(P.output.box) : [P.output.name]);
+  var m = await workerCall(e, { type: 'run', input: P.input.name, data: data, dims: dims, outputs: outs }, [data.buffer]);
+  return outs.map(function (k) { return m.out[k]; });
+}
+
+/* ---------------- Volumes (NIfTI record or DICOM series) ---------------- */
+function volKeyOf(img) { return img ? (img.vol ? img.id : img.seriesId) : null; }
+function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function volCandidates() {
+  var out = [];
+  S.studies.forEach(function (st) {
+    st.series.forEach(function (se) {
+      var ims = se.images.map(function (id) { return S.images.get(id); }).filter(function (im) { return im && im.kind === 'gray'; });
+      ims.forEach(function (im) { if (im.vol) out.push({ key: im.id, img: im, n: im.vol.n.slice(), label: st.label + ' · ' + se.label + (im.vol.nt > 1 ? ' · volume ' + (im.vol.t + 1) : '') + (im.seqHint ? ' (' + im.seqHint + ')' : '') }); });
+      var dic = ims.filter(function (im) { return !im.vol && im.isDicom && !im.synthetic; });
+      if (dic.length >= 8 || (dic.length === 1 && dic[0].frames.length >= 8)) out.push({ key: se.id, img: dic[0], n: [dic[0].w, dic[0].h, dic.length > 1 ? dic.length : dic[0].frames.length], label: st.label + ' · ' + se.label + ' · ' + (se.modality || 'DICOM') + ' series' });
+    });
+  });
+  return out;
+}
+function buildVolume(key) {
+  var img = S.images.get(key);
+  if (img && img.vol) {
+    var V0 = img.vol, n = V0.n, colIdx = new Int32Array(n[0]), rowOff = new Int32Array(n[1]);
+    for (var i = 0; i < n[0]; i++) colIdx[i] = V0.flipX ? n[0] - 1 - i : i;
+    for (var j = 0; j < n[1]; j++) rowOff[j] = (V0.flipY ? n[1] - 1 - j : j) * n[0];
+    return { key: key, n: n.slice(), slices: img.frames, colIdx: colIdx, rowOff: rowOff, sp: V0.sp.slice(), dirs: V0.dirs, approx: false, w: img.w, h: img.h,
+      ref: function (k) { return { imageId: img.id, frame: k }; }, toDisp: function (i2, j2) { return [V0.flipX ? n[0] - 1 - i2 : i2, V0.flipY ? n[1] - 1 - j2 : j2]; }, refs: [img.id] };
+  }
+  var se = null; S.studies.forEach(function (st) { st.series.forEach(function (x) { if (x.id === key) se = x; }); });
+  if (!se) throw new Error('no-volume');
+  var ims = se.images.map(function (id) { return S.images.get(id); }).filter(function (im) { return im && im.kind === 'gray' && im.isDicom && !im.vol; });
+  if (!ims.length) throw new Error('no-volume');
+  var a = ims[0], W = a.w, Hh = a.h; ims = ims.filter(function (im) { return im.w === W && im.h === Hh; });
+  if (!a.spacing) throw new Error('no-spacing');
+  var geo = a.geo || {}, iop = geo.iop || null, approx = !iop, row = iop ? iop.slice(0, 3) : [1, 0, 0], col = iop ? iop.slice(3, 6) : [0, 1, 0], nrm = cross(row, col), slices, refs, dz;
+  if (ims.length === 1 && a.frames.length > 1) {
+    slices = a.frames; refs = a.frames.map(function (f, k) { return { imageId: a.id, frame: k }; }); dz = geo.thickness || 1; approx = true;
+  } else {
+    var withPos = ims.every(function (im) { return im.geo && im.geo.ipp; });
+    var pos = ims.map(function (im, k) { return { im: im, z: withPos ? dot(im.geo.ipp, nrm) : (im.order || k) }; }).sort(function (p, q) { return p.z - q.z; });
+    if (withPos) {
+      var d = []; for (var q = 1; q < pos.length; q++) d.push(pos[q].z - pos[q - 1].z);
+      var ds = d.slice().sort(function (x, y) { return x - y; }), med = ds[Math.floor(ds.length / 2)];
+      if (!(med > 1e-3) || d.some(function (x) { return Math.abs(x - med) > 0.2 * med; })) throw new Error('irregular');
+      dz = med;
+    } else { dz = geo.thickness || 1; approx = true; }
+    slices = pos.map(function (p) { return p.im.frames[0]; }); refs = pos.map(function (p) { return { imageId: p.im.id, frame: 0 }; });
+  }
+  var ras = function (v) { return [-v[0], -v[1], v[2]]; }, ci = new Int32Array(W), ro = new Int32Array(Hh);
+  for (var x = 0; x < W; x++) ci[x] = x; for (var y = 0; y < Hh; y++) ro[y] = y * W;
+  return { key: key, n: [W, Hh, slices.length], slices: slices, colIdx: ci, rowOff: ro, sp: [a.spacing[1], a.spacing[0], dz], dirs: [ras(row), ras(col), ras(nrm)], approx: approx, w: W, h: Hh,
+    ref: function (k) { return refs[k]; }, toDisp: function (i2, j2) { return [i2, j2]; }, refs: refs.map(function (r) { return r.imageId; }) };
+}
+// RAS orientation plan (as MONAI Orientation "RAS" on near-axis-aligned volumes): perm[w] = voxel axis, flip[w].
+function rasPlan(V) {
+  var pairs = [], perm = [null, null, null], flip = [false, false, false], used = [false, false, false];
+  for (var a = 0; a < 3; a++) for (var w = 0; w < 3; w++) pairs.push([Math.abs(V.dirs[a][w]), a, w]);
+  pairs.sort(function (p, q) { return q[0] - p[0]; });
+  pairs.forEach(function (p) { if (!used[p[1]] && perm[p[2]] == null) { perm[p[2]] = p[1]; flip[p[2]] = V.dirs[p[1]][p[2]] < 0; used[p[1]] = true; } });
+  return { perm: perm, flip: flip };
+}
+function gridSize(V, plan, pix) { return [0, 1, 2].map(function (w) { var a = plan.perm[w]; return Math.floor((V.n[a] - 1) * V.sp[a] / pix[w] + 1e-6) + 1; }); }
+// Voxel index along axis a <-> output index along w (voxel centres; MONAI Spacing keeps voxel 0 aligned).
+function toOut(V, plan, pix, w, idx) { var a = plan.perm[w], o = plan.flip[w] ? V.n[a] - 1 - idx : idx; return o * V.sp[a] / pix[w]; }
+function toVox(V, plan, pix, w, m) { var a = plan.perm[w], o = m * pix[w] / V.sp[a]; return plan.flip[w] ? V.n[a] - 1 - o : o; }
+// Trilinear resampling of the ROI [lo, hi) of the RAS output grid. Output C-order, last axis fastest.
+async function resampleRAS(V, plan, pix, lo, hi) {
+  var sz = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]], out = new Float32Array(sz[0] * sz[1] * sz[2]), ax = [];
+  for (var w = 0; w < 3; w++) {
+    var a = plan.perm[w], na = V.n[a], i0 = new Int32Array(sz[w]), i1 = new Int32Array(sz[w]), f = new Float32Array(sz[w]);
+    for (var m = 0; m < sz[w]; m++) { var c = Math.max(0, Math.min(na - 1, toVox(V, plan, pix, w, lo[w] + m))), b = Math.floor(c); i0[m] = b; i1[m] = Math.min(na - 1, b + 1); f[m] = c - b; }
+    ax.push({ a: a, i0: i0, i1: i1, f: f });
+  }
+  var I0 = [0, 0, 0], I1 = [0, 0, 0], F = [0, 0, 0], S2 = V.slices, ci = V.colIdx, ro = V.rowOff, p = 0;
+  for (var m0 = 0; m0 < sz[0]; m0++) {
+    I0[ax[0].a] = ax[0].i0[m0]; I1[ax[0].a] = ax[0].i1[m0]; F[ax[0].a] = ax[0].f[m0];
+    for (var m1 = 0; m1 < sz[1]; m1++) {
+      I0[ax[1].a] = ax[1].i0[m1]; I1[ax[1].a] = ax[1].i1[m1]; F[ax[1].a] = ax[1].f[m1];
+      for (var m2 = 0; m2 < sz[2]; m2++) {
+        I0[ax[2].a] = ax[2].i0[m2]; I1[ax[2].a] = ax[2].i1[m2]; F[ax[2].a] = ax[2].f[m2];
+        var x0 = ci[I0[0]], x1 = ci[I1[0]], y0 = ro[I0[1]], y1 = ro[I1[1]], s0 = S2[I0[2]], s1 = S2[I1[2]], fx = F[0], fy = F[1], fz = F[2];
+        var c00 = s0[y0 + x0] * (1 - fx) + s0[y0 + x1] * fx, c01 = s0[y1 + x0] * (1 - fx) + s0[y1 + x1] * fx, c10 = s1[y0 + x0] * (1 - fx) + s1[y0 + x1] * fx, c11 = s1[y1 + x0] * (1 - fx) + s1[y1 + x1] * fx;
+        out[p++] = ((c00 * (1 - fy) + c01 * fy) * (1 - fz)) + ((c10 * (1 - fy) + c11 * fy) * fz);
+      }
+    }
+    if (m0 % 32 === 31) { if (v3().cancel) throw cancelled(); await new Promise(function (r) { setTimeout(r, 0); }); }
+  }
+  return out;
+}
+
+/* ---------------- Sliding windows (pipeline3d.scan_starts) ---------------- */
+function scanStarts(size, roi, overlap) {
+  if (roi === size) return [0];
+  var interval = Math.floor(roi * (1 - overlap)); if (interval <= 0) interval = 1;
+  var num = Math.ceil((size - roi) / interval) + 1, out = [];
+  for (var i = 0; i < num; i++) out.push(Math.min(i * interval, size - roi));
+  return out;
+}
+function progress(phase, done, total, t0) {
+  var P = v3(), el = (Date.now() - t0) / 1000;
+  P.progress = { phase: phase, done: done, total: total, left: done > 0 ? el / done * (total - done) : null };
+  scheduleRender();
+}
+function fmtSec(s) { return s == null ? 'estimating…' : s < 90 ? Math.max(1, Math.round(s)) + ' s' : Math.round(s / 60) + ' min'; }
+
+/* ---------------- Brain MRI: BraTS SegResNet ---------------- */
+function brainChannels(P) { return P.input.channels; }
+function brainAutoAssign(P) {
+  var A = v3().ch, cands = volCandidates();
+  brainChannels(P).forEach(function (c) {
+    if (A[c] && cands.some(function (x) { return x.key === A[c]; })) return;
+    var hit = cands.find(function (x) { return x.img.seqHint === c && !brainChannels(P).some(function (o) { return o !== c && A[o] === x.key; }); });
+    A[c] = hit ? hit.key : '';
+  });
+}
+function brainCheck(P) {
+  var A = v3().ch, keys = brainChannels(P).map(function (c) { return A[c]; });
+  if (keys.some(function (k) { return !k; })) return 'Assign a volume to each of the four sequences.';
+  if (keys.some(function (k, i) { return keys.indexOf(k) !== i; })) return 'Each sequence needs a different volume.';
+  var c = volCandidates(), ns = keys.map(function (k) { var x = c.find(function (y) { return y.key === k; }); return x ? x.n.join('×') : null; });
+  if (ns.some(function (n) { return !n; })) return 'A selected volume is no longer in memory.';
+  if (ns.some(function (n) { return n !== ns[0]; })) return 'The four volumes must be on the same voxel grid (same matrix size); they are ' + ns.join(', ') + '. Co-register them first (BraTS files already are).';
+  return null;
+}
+async function runBrain(e) {
+  var P = e.pack, err = brainCheck(P); if (err) throw new Error('brain-input');
+  var chs = brainChannels(P), Vs = chs.map(function (c) { return buildVolume(v3().ch[c]); }), n = Vs[0].n, N = n[0] * n[1] * n[2], C = chs.length;
+  var X = new Float32Array(C * N), t0 = Date.now();
+  progress('Reading and normalising the four volumes', 0, 1, t0);
+  for (var c = 0; c < C; c++) {
+    var V = Vs[c], base = c * N, s1 = 0, s2 = 0, cnt = 0;
+    for (var k = 0; k < n[2]; k++) { var sl = V.slices[k]; for (var j = 0; j < n[1]; j++) { var ro = V.rowOff[j]; for (var i = 0; i < n[0]; i++) { var v = sl[ro + V.colIdx[i]]; X[base + (i * n[1] + j) * n[2] + k] = v; if (v !== 0) { s1 += v; cnt++; } } } }
+    if (cnt) {   // NormalizeIntensity(nonzero=True, channel_wise=True), population std
+      var mean = s1 / cnt; for (var q = 0; q < N; q++) { var x = X[base + q]; if (x !== 0) s2 += (x - mean) * (x - mean); }
+      var sd = Math.sqrt(s2 / cnt) || 1; for (q = 0; q < N; q++) if (X[base + q] !== 0) X[base + q] = (X[base + q] - mean) / sd;
+    }
+    await new Promise(function (r) { setTimeout(r, 0); }); if (v3().cancel) throw cancelled();
+  }
+  var roi = P.inferer.roi, ov = P.inferer.overlap, pad = [0, 1, 2].map(function (a) { return Math.max(roi[a] - n[a], 0); }), lo = pad.map(function (p) { return Math.floor(p / 2); }), ps = [0, 1, 2].map(function (a) { return n[a] + pad[a]; });
+  var st = [scanStarts(ps[0], roi[0], ov), scanStarts(ps[1], roi[1], ov), scanStarts(ps[2], roi[2], ov)], wins = [];
+  st[0].forEach(function (x) { st[1].forEach(function (y) { st[2].forEach(function (z) { wins.push([x, y, z]); }); }); });
+  var K = P.labels.length, acc = new Float32Array(K * N), cntm = new Uint8Array(N), R = roi[0] * roi[1] * roi[2];
+  t0 = Date.now();
+  for (var wi = 0; wi < wins.length; wi++) {
+    progress('Brain tumour AI: window ' + (wi + 1) + ' of ' + wins.length, wi, wins.length, t0);
+    var ws = wins[wi], inp = new Float32Array(C * R);
+    for (c = 0; c < C; c++) for (var a0 = 0; a0 < roi[0]; a0++) { var gi = ws[0] + a0 - lo[0]; if (gi < 0 || gi >= n[0]) continue;
+      for (var a1 = 0; a1 < roi[1]; a1++) { var gj = ws[1] + a1 - lo[1]; if (gj < 0 || gj >= n[1]) continue;
+        var srcB = c * N + (gi * n[1] + gj) * n[2], dstB = ((c * roi[0] + a0) * roi[1] + a1) * roi[2];
+        for (var a2 = 0; a2 < roi[2]; a2++) { var gk = ws[2] + a2 - lo[2]; if (gk >= 0 && gk < n[2]) inp[dstB + a2] = X[srcB + gk]; } } }
+    var o = (await runWindow(e, inp, [1, C, roi[0], roi[1], roi[2]]))[0].data;
+    for (var kk = 0; kk < K; kk++) for (a0 = 0; a0 < roi[0]; a0++) { gi = ws[0] + a0 - lo[0]; if (gi < 0 || gi >= n[0]) continue;
+      for (a1 = 0; a1 < roi[1]; a1++) { gj = ws[1] + a1 - lo[1]; if (gj < 0 || gj >= n[1]) continue;
+        var ob = ((kk * roi[0] + a0) * roi[1] + a1) * roi[2], gb = (gi * n[1] + gj) * n[2];
+        for (a2 = 0; a2 < roi[2]; a2++) { gk = ws[2] + a2 - lo[2]; if (gk < 0 || gk >= n[2]) continue; acc[kk * N + gb + gk] += o[ob + a2]; if (kk === 0) cntm[gb + gk]++; } } }
+  }
+  v3().secPerTile[P.id] = (Date.now() - t0) / 1000 / wins.length;
+  X = null;
+  return brainResults(e, Vs, acc, cntm, n);
+}
+function brainResults(e, Vs, acc, cntm, n) {
+  var P = e.pack, N = n[0] * n[1] * n[2], thr = P.output.threshold, V = Vs[0], vox = V.sp[0] * V.sp[1] * V.sp[2], keyBase = 'b' + Date.now(), res = [];
+  var order = ['Whole tumor', 'Tumor core', 'Enhancing tumor'].map(function (l) { return P.labels.indexOf(l); }).filter(function (i) { return i >= 0; });
+  P.labels.forEach(function (l, i) { if (order.indexOf(i) < 0) order.push(i); });
+  var vols = Vs.map(function (x) { return x.key; });
+  order.forEach(function (kk) {
+    var label = P.labels[kk], sid = nextAiId(), count = 0, psum = 0, kmin = Infinity, kmax = -1, per = [];
+    for (var k = 0; k < n[2]; k++) {
+      var md = null, sc = 0, sn = 0, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+      for (var j = 0; j < n[1]; j++) for (var i = 0; i < n[0]; i++) {
+        var g = (i * n[1] + j) * n[2] + k, p = 1 / (1 + Math.exp(-acc[kk * N + g] / cntm[g]));
+        if (p > thr) { if (!md) md = new Uint8Array(V.w * V.h); var d = V.toDisp(i, j); md[d[1] * V.w + d[0]] = 1; sc += p; sn++; if (d[0] < x0) x0 = d[0]; if (d[0] > x1) x1 = d[0]; if (d[1] < y0) y0 = d[1]; if (d[1] > y1) y1 = d[1]; }
+      }
+      if (md) { per.push({ k: k, md: md, score: sc / sn, bbox: [x0, y0, x1 + 1, y1 + 1] }); count += sn; psum += sc; kmin = Math.min(kmin, k); kmax = Math.max(kmax, k); }
+    }
+    var ml = count * vox / 1000, color = BRAIN_CH_COLORS[label] || [232, 121, 249], note = (P.labelNotes || {})[label] || '';
+    var mid = per.length ? per[Math.floor(per.length / 2)].k : null;
+    res.push(packResult(e, { id: Vs[0].ref(0).imageId }, { id: sid, type: 'segmentation-3d', label: label + (note ? ' — ' + note : ''), score: count ? psum / count : null, vols: vols, color: color,
+      detail: count ? num(ml, 1) + ' mL · ' + count.toLocaleString('en-US') + ' voxels · slices ' + (kmin + 1) + '–' + (kmax + 1) + ' of ' + n[2] : 'No voxels above the threshold', gotoFrame: mid, frame: mid || 0, volumeMl: ml, voxels: count }));
+    // Per-slice masks, shown on every one of the four volumes.
+    var d0 = V.toDisp(0, 0).join(',');
+    Vs.forEach(function (Vc) {
+      if (Vc.toDisp(0, 0).join(',') !== d0 || Vc.w !== V.w || Vc.h !== V.h) return;      // displayed differently: masks would not line up
+      per.forEach(function (q) { var ref = Vc.ref(q.k); res.push(packResult(e, { id: ref.imageId }, { id: sid + '.' + Vc.key + '.' + (q.k + 1), group: sid, vol: Vc.key, type: 'mask', label: label + ' (slice ' + (q.k + 1) + ')', score: q.score, frame: ref.frame, color: color, mask: { key: keyBase + sid + Vc.key + q.k, w: Vc.w, h: Vc.h, data: q.md, bbox: q.bbox } })); });
+    });
+  });
+  res.volKeys = vols;
+  return res;
+}
+
+/* ---------------- Lung CT: LUNA16 RetinaNet ---------------- */
+function lungRoi(V, plan, P) {
+  var pix = P.input.pixdimMm, M = gridSize(V, plan, pix), R = v3(), img = curImg(), lo = [0, 0, 0], hi = M.slice(), wk = plan.perm.indexOf(2);
+  var curK = 0; if (img) { for (var k = 0; k < V.n[2]; k++) { var r = V.ref(k); if (r.imageId === img.id && r.frame === S.frame) { curK = k; break; } } }
+  var limit = function (w, a0, a1) { var b0 = toOut(V, plan, pix, w, a0), b1 = toOut(V, plan, pix, w, a1); lo[w] = Math.max(0, Math.floor(Math.min(b0, b1))); hi[w] = Math.min(M[w], Math.ceil(Math.max(b0, b1)) + 1); };
+  var half = 0;
+  if (R.roi !== 'whole') {
+    half = Math.max(10, Math.min(200, Number(R.slabMm) || 30)) / V.sp[2];
+    limit(wk, Math.max(0, curK - half), Math.min(V.n[2] - 1, curK + half));
+  }
+  if (R.roi !== 'rect') {
+    // Crop in-plane to the body outline (> -500 HU) + 10 mm: air outside the body scales to 0, the model's own padding value.
+    var b = bodyBox(V, R.roi === 'whole' ? 0 : Math.max(0, Math.floor(curK - half)), R.roi === 'whole' ? V.n[2] - 1 : Math.min(V.n[2] - 1, Math.ceil(curK + half)));
+    if (b) { var mi = Math.ceil(10 / V.sp[0]), mj = Math.ceil(10 / V.sp[1]); limit(plan.perm.indexOf(0), Math.max(0, b[0] - mi), Math.min(V.n[0] - 1, b[1] + mi)); limit(plan.perm.indexOf(1), Math.max(0, b[2] - mj), Math.min(V.n[1] - 1, b[3] + mj)); }
+  }
+  if (R.roi === 'rect') {
+    var a = S.annotations.find(function (x) { return x.id === S.selected; });
+    if (!a || a.type !== 'rect' || V.refs.indexOf(a.imageId) < 0) throw new Error('lung-rect');
+    var p0 = V.toDisp(Math.round(a.points[0].x), Math.round(a.points[0].y)), p1 = V.toDisp(Math.round(a.points[1].x), Math.round(a.points[1].y)), m = 8;
+    limit(plan.perm.indexOf(0), Math.max(0, Math.min(p0[0], p1[0]) - m), Math.min(V.n[0] - 1, Math.max(p0[0], p1[0]) + m));
+    limit(plan.perm.indexOf(1), Math.max(0, Math.min(p0[1], p1[1]) - m), Math.min(V.n[1] - 1, Math.max(p0[1], p1[1]) + m));
+  }
+  for (var w = 0; w < 3; w++) if (hi[w] - lo[w] < 16) { var c = Math.floor((lo[w] + hi[w]) / 2); lo[w] = Math.max(0, Math.min(M[w] - 16, c - 8)); hi[w] = Math.min(M[w], lo[w] + 16); }
+  return { lo: lo, hi: hi, M: M };
+}
+var BODY_CACHE = { key: null, box: null };
+function bodyBox(V, k0, k1) {
+  var ck = V.key + '|' + k0 + '|' + k1; if (BODY_CACHE.key === ck) return BODY_CACHE.box;
+  var i0 = Infinity, i1 = -1, j0 = Infinity, j1 = -1, lowest = Infinity, step = Math.max(1, Math.floor((k1 - k0) / 24));
+  for (var k = k0; k <= k1; k += step) { var sl = V.slices[k]; for (var j = 0; j < V.n[1]; j += 2) { var ro = V.rowOff[j]; for (var i = 0; i < V.n[0]; i += 2) { var v = sl[ro + V.colIdx[i]]; if (v < lowest) lowest = v; if (v > -500) { if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; } } } }
+  var box = lowest < -900 && i1 > i0 && j1 > j0 ? [i0, i1 + 1, j0, j1 + 1] : null;            // only for CT in HU with air around the body
+  BODY_CACHE.key = ck; BODY_CACHE.box = box; return box;
+}
+function isCtLike(img) { return !!img && (/CT/.test(String(img.modality || '')) || (!!img.vol && img.range && img.range.min < -900)); }
+function lungPlanFor(P, key) {
+  if (!isCtLike(S.images.get(key) || curImg())) throw new Error('not-ct');
+  var V = buildVolume(key), plan = rasPlan(V), roi = lungRoi(V, plan, P), size = [0, 1, 2].map(function (w) { return roi.hi[w] - roi.lo[w]; });
+  var sd = P.input.sizeDivisible, psize = size.map(function (s, i) { return Math.ceil(s / sd[i]) * sd[i]; }), t = P.inferer.tile.map(function (x, i) { return Math.min(x, psize[i]); });
+  var st = [0, 1, 2].map(function (i) { return scanStarts(psize[i], t[i], P.inferer.overlap); });
+  return { V: V, plan: plan, roi: roi, size: size, psize: psize, tile: t, starts: st, nwin: st[0].length * st[1].length * st[2].length };
+}
+function lungEstimate(P) {
+  try {
+    var img = curImg(), L = lungPlanFor(P, volKeyOf(img)), full = P.inferer.tile[0] * P.inferer.tile[1] * P.inferer.tile[2], per = v3().secPerTile[P.id] ? v3().secPerTile[P.id] / (v3().lastTileVox || full) : (200 / cpuThreads()) / full;
+    return { L: L, sec: L.nwin * per * L.tile[0] * L.tile[1] * L.tile[2], mm: L.size.map(function (s, w) { return s * P.input.pixdimMm[w]; }) };
+  } catch (err) { return { error: err.message }; }
+}
+async function runLung(e) {
+  var P = e.pack, img = curImg(); if (!img) throw new Error('no-volume');
+  var L = lungPlanFor(P, volKeyOf(img)), V = L.V, t0 = Date.now(), I = P.input.intensity;
+  if (V.n[2] < 16) throw new Error('no-volume');
+  progress('Resampling the CT to ' + P.input.pixdimMm.join(' × ') + ' mm (RAS)', 0, 1, t0);
+  var vol = await resampleRAS(V, L.plan, P.input.pixdimMm, L.roi.lo, L.roi.hi), sz = L.size, ps = L.psize, t = L.tile;
+  var padded = new Float32Array(ps[0] * ps[1] * ps[2]);    // zeros at the end (pad_images); 0 = -1024 HU after scaling
+  for (var x = 0; x < sz[0]; x++) for (var y = 0; y < sz[1]; y++) { var sb = (x * sz[1] + y) * sz[2], db = (x * ps[1] + y) * ps[2];
+    for (var z = 0; z < sz[2]; z++) { var v = vol[sb + z]; if (I.clip) v = Math.max(I.aMin, Math.min(I.aMax, v)); padded[db + z] = (v - I.aMin) / (I.aMax - I.aMin) * (I.bMax - I.bMin) + I.bMin; } }
+  vol = null;
+  var wins = []; L.starts[0].forEach(function (a) { L.starts[1].forEach(function (b) { L.starts[2].forEach(function (c) { wins.push([a, b, c]); }); }); });
+  var nl = P.output.cls.length, acc = null, cnt = null, grids = null, T = t[0] * t[1] * t[2];
+  t0 = Date.now();
+  for (var wi = 0; wi < wins.length; wi++) {
+    progress('Lung nodule AI: window ' + (wi + 1) + ' of ' + wins.length, wi, wins.length, t0);
+    var s = wins[wi], inp = new Float32Array(T);
+    for (x = 0; x < t[0]; x++) for (y = 0; y < t[1]; y++) { var src = ((s[0] + x) * ps[1] + s[1] + y) * ps[2] + s[2], dst = (x * t[1] + y) * t[2]; inp.set(padded.subarray(src, src + t[2]), dst); }
+    var outs = await runWindow(e, inp, [1, 1, t[0], t[1], t[2]]);
+    if (!acc) {
+      acc = []; cnt = []; grids = [];
+      outs.forEach(function (o) { var st2 = [0, 1, 2].map(function (i) { return t[i] / o.dims[2 + i]; }), g = [0, 1, 2].map(function (i) { return ps[i] / st2[i]; }); grids.push({ st: st2, g: g, ch: o.dims[1] }); acc.push(new Float32Array(o.dims[1] * g[0] * g[1] * g[2])); cnt.push(new Uint8Array(g[0] * g[1] * g[2])); });
+    }
+    outs.forEach(function (o, l) {
+      var G = grids[l], g = G.g, d = o.dims, ox = s[0] / G.st[0], oy = s[1] / G.st[1], oz = s[2] / G.st[2], gl = g[0] * g[1] * g[2], wl = d[2] * d[3] * d[4];
+      for (var ch = 0; ch < d[1]; ch++) for (var a0 = 0; a0 < d[2]; a0++) for (var a1 = 0; a1 < d[3]; a1++) { var ob = ch * wl + (a0 * d[3] + a1) * d[4], gb = ch * gl + ((ox + a0) * g[1] + oy + a1) * g[2] + oz;
+        for (var a2 = 0; a2 < d[4]; a2++) acc[l][gb + a2] += o.data[ob + a2]; }
+      for (a0 = 0; a0 < d[2]; a0++) for (a1 = 0; a1 < d[3]; a1++) { var cb = ((ox + a0) * g[1] + oy + a1) * g[2] + oz; for (a2 = 0; a2 < d[4]; a2++) cnt[l][cb + a2]++; }
+    });
+  }
+  v3().secPerTile[P.id] = (Date.now() - t0) / 1000 / wins.length; v3().lastTileVox = T;
+  padded = null;
+  for (var l = 0; l < acc.length; l++) { var G2 = grids[l], gl2 = G2.g[0] * G2.g[1] * G2.g[2]; for (var q = 0; q < acc[l].length; q++) acc[l][q] /= cnt[l][q % gl2]; }
+  var det = lungDetect(P, ps, acc.slice(0, nl), acc.slice(nl), grids.slice(0, nl), sz);
+  return lungResults(e, L, det);
+}
+// pipeline3d.lung_detect: anchors, box decoding, per-level threshold + top-k, clip, NMS.
+function lungDetect(P, ps, cls, box, grids, imgSize) {
+  var A = P.output.anchorsPerLocation, wts = P.boxCoder.weights, clip = P.boxCoder.clip, Sel = P.selector, cand = [];
+  for (var l = 0; l < cls.length; l++) {
+    var g = grids[l].g, gl = g[0] * g[1] * g[2], st = [ps[0] / g[0], ps[1] / g[1], ps[2] / g[2]], cell = P.anchors.cellAnchors[l], lev = [];
+    for (var loc = 0; loc < gl; loc++) for (var a = 0; a < A; a++) {
+      var sc = 1 / (1 + Math.exp(-cls[l][a * gl + loc])); if (sc > Sel.scoreThresh) lev.push([sc, loc, a]);
+    }
+    lev.sort(function (p, q) { return q[0] - p[0]; }); lev = lev.slice(0, Sel.topkPerLevel);
+    lev.forEach(function (c) {
+      var loc2 = c[1], a2 = c[2], ix = Math.floor(loc2 / (g[1] * g[2])), iy = Math.floor(loc2 / g[2]) % g[1], iz = loc2 % g[2], sh = [ix * st[0], iy * st[1], iz * st[2]], b = new Float32Array(6);
+      for (var ax = 0; ax < 3; ax++) {
+        var lo = sh[ax] + cell[a2][ax], hi = sh[ax] + cell[a2][ax + 3], wd = hi - lo, ctr = (lo + hi) / 2;
+        var dx = box[l][(a2 * 6 + ax) * gl + loc2] / wts[ax], dw = Math.min(box[l][(a2 * 6 + ax + 3) * gl + loc2] / wts[ax + 3], clip);
+        var pc = dx * wd + ctr, pw = Math.exp(dw) * wd;
+        b[ax] = Math.max(0, Math.min(imgSize[ax], pc - 0.5 * pw)); b[ax + 3] = Math.max(0, Math.min(imgSize[ax], pc + 0.5 * pw));
+      }
+      if (b[3] >= b[0] + 1 && b[4] >= b[1] + 1 && b[5] >= b[2] + 1) cand.push({ b: b, s: c[0] });
+    });
+  }
+  cand.sort(function (p, q) { return q.s - p.s; });
+  var keep = [], alive = cand.map(function () { return true; }), vol = function (b) { return (b[3] - b[0]) * (b[4] - b[1]) * (b[5] - b[2]); };
+  for (var i = 0; i < cand.length; i++) {
+    if (!alive[i]) continue; keep.push(cand[i]); if (keep.length >= Sel.detectionsPerImage) break;
+    var bi = cand[i].b, vi = vol(bi);
+    for (var j = i + 1; j < cand.length; j++) {
+      if (!alive[j]) continue; var bj = cand[j].b, inter = 1;
+      for (var ax2 = 0; ax2 < 3; ax2++) { var d = Math.min(bi[ax2 + 3], bj[ax2 + 3]) - Math.max(bi[ax2], bj[ax2]); if (d <= 0) { inter = 0; break; } inter *= d; }
+      if (inter / (vi + vol(bj) - inter + 1.1920929e-7) > Sel.nmsThresh) alive[j] = false;
+    }
+  }
+  return keep;
+}
+function lungResults(e, L, det) {
+  var P = e.pack, V = L.V, plan = L.plan, pix = P.input.pixdimMm, res = [], keyed = [];
+  det.slice(0, 50).forEach(function (d, n) {
+    // Box (output voxel-edge coordinates in the ROI) -> voxel ranges of the source volume.
+    var rng = [null, null, null], mm = [];
+    for (var w = 0; w < 3; w++) {
+      var a = plan.perm[w], c0 = toVox(V, plan, pix, w, L.roi.lo[w] + d.b[w] - 0.5), c1 = toVox(V, plan, pix, w, L.roi.lo[w] + d.b[w + 3] - 0.5);
+      rng[a] = [Math.min(c0, c1) + 0.5, Math.max(c0, c1) + 0.5]; mm.push((d.b[w + 3] - d.b[w]) * pix[w]);
+    }
+    var sid = nextAiId(), k0 = Math.max(0, Math.floor(rng[2][0])), k1 = Math.min(V.n[2] - 1, Math.ceil(rng[2][1]) - 1), kc = Math.round((rng[2][0] + rng[2][1]) / 2 - 0.5);
+    if (k1 < k0) k1 = k0; kc = Math.max(k0, Math.min(k1, kc));
+    var p0 = V.toDisp(rng[0][0], rng[1][0]), p1 = V.toDisp(rng[0][1], rng[1][1]), bx = [Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[0], p1[0]), Math.max(p0[1], p1[1])];
+    if (V.toDisp(0, 0)[0] !== 0) { bx[0] += 1; bx[2] += 1; } if (V.toDisp(0, 0)[1] !== 0) { bx[1] += 1; bx[3] += 1; }   // flipped display axes: edge, not centre
+    var refC = V.ref(kc);
+    res.push(packResult(e, { id: refC.imageId }, { id: sid, type: 'detection-3d', label: 'Lung nodule candidate', score: d.s, vols: [V.key], frame: refC.frame, gotoFrame: kc, gotoImage: refC.imageId,
+      boxRas: [0, 1, 2, 3, 4, 5].map(function (q) { return L.roi.lo[q % 3] + d.b[q]; }), detail: 'about ' + mm.map(function (v) { return num(v, 1); }).join(' × ') + ' mm (box, RAS x × y × z) · slices ' + (k0 + 1) + '–' + (k1 + 1) + ' of ' + V.n[2] + ', centre ' + (kc + 1), sizeMm: mm }));
+    for (var k = k0; k <= k1; k++) { var r = V.ref(k); res.push(packResult(e, { id: r.imageId }, { id: sid + '.' + (k + 1), group: sid, vol: V.key, type: 'boundingBox', label: 'Lung nodule candidate ' + sid + ' (slice ' + (k + 1) + ')', score: d.s, frame: r.frame, box: bx.slice() })); }
+    keyed.push(sid);
+  });
+  res.volKeys = [V.key];
+  res.roiNote = L.roi;
+  return res;
+}
+
+/* ---------------- Run, accept, UI pieces ---------------- */
+async function run3dPack(e) {
+  var R = v3(); R.cancel = false; R.progress = null;
+  try { return e.pack.task === 'brain-mri-seg-3d' ? await runBrain(e) : await runLung(e); }
+  finally { R.progress = null; }
+}
+function cancel3d() { var R = v3(); R.cancel = true; var e = packSel(); if (e) workerStop(e); scheduleRender(); }
+function curVolKeys() { var img = curImg(); return img ? [img.vol ? img.id : img.seriesId] : []; }
+function accept3d(r) {
+  var vk = curVolKeys()[0], rows = S.ai.results.filter(function (x) { return x.group === r.id && !x.accepted && (x.vol === vk || r.vols.indexOf(vk) < 0); }), n = 0;
+  if (r.vols.indexOf(vk) < 0) { var first = rows.length ? rows[0].vol : null; rows = rows.filter(function (x) { return x.vol === first; }); }
+  rows.forEach(function (x) {
+    var a = { id: 'A' + S.nextAnn++, imageId: x.imageId, frame: x.frame || 0, label: 'unknown', provenance: 'originally AI-derived, accepted by user', aiOrigin: { suggestion: x.id, model: x.model, label: r.label, score: x.score }, createdAt: isoNow(), note: '' };
+    if (x.box) { a.type = 'rect'; a.points = [{ x: x.box[0], y: x.box[1] }, { x: x.box[2], y: x.box[3] }]; } else { a.type = 'mask'; a.points = []; a.mask = { key: x.mask.key + 'a', w: x.mask.w, h: x.mask.h, data: x.mask.data, bbox: x.mask.bbox }; }
+    x.accepted = true; S.annotations.push(a); n++;
+  });
+  r.accepted = true; toast('Accepted as ' + n + ' user annotation(s), one per slice (originally AI-derived).'); scheduleRender();
+}
+function aiGoto(r) {
+  if (!r || r.gotoFrame == null) return;
+  var img = curImg(), vk = curVolKeys()[0];
+  if (r.vols && r.vols.indexOf(vk) >= 0 && img && img.vol) { S.frame = r.gotoFrame; }
+  else { var row = S.ai.results.find(function (x) { return x.group === r.id && (x.vol === vk || !vk) && (x.id.split('.').pop() | 0) === r.gotoFrame + 1; }) || S.ai.results.find(function (x) { return x.group === r.id; });
+    if (row) { S.current = row.imageId; S.frame = row.frame || 0; } }
+  scheduleRender();
+}
+function v3Ready(pk) {
+  if (!is3dPack(pk)) return true;
+  if (pk.pack.task === 'brain-mri-seg-3d') return !brainCheck(pk.pack);
+  var est = lungEstimate(pk.pack); return !est.error;
+}
+function v3Panel(pk) {
+  if (!is3dPack(pk)) return '';
+  var P = pk.pack, R = v3(), cands = volCandidates();
+  if (P.task === 'brain-mri-seg-3d') {
+    brainAutoAssign(P);
+    var err = brainCheck(P);
+    return H`<fieldset class="oi-card"><legend class="oi-card-title">Brain MRI input: assign the four co-registered sequences</legend>
+      ${cands.length ? '' : notice('warn', 'Load the four sequences first (Upload Image → NIfTI .nii/.nii.gz files such as BraTS, or DICOM series on the same grid).')}
+      <div class="oi-grid-2">${brainChannels(P).map(function (c) { return H`<label class="oi-field"><span>${c}</span><select class="oi-input" data-change="v3-ch" data-ch="${c}"><option value="">— choose a volume —</option>${cands.map(function (x) { return H`<option value="${x.key}" ${R.ch[c] === x.key ? raw('selected') : ''}>${x.label} · ${x.n.join('×')}</option>`; })}</select></label>`; })}</div>
+      ${err ? notice('warn', err) : notice('info', 'Model input: ' + brainChannels(P).join(' + ') + ' in that order, voxel order as stored, each normalised over its non-zero voxels. The browser runs ' + P.inferer.roi.join(' × ') + ' windows with ' + Math.round(P.inferer.overlap * 100) + '% overlap. Expect several minutes on a laptop.')}
+      ${notice('warn', 'Use only skull-stripped, co-registered, ~1 mm isotropic volumes (BraTS-style). Raw scanner series give unreliable output.')}</fieldset>`;
+  }
+  var est = lungEstimate(P), img = curImg();
+  return H`<fieldset class="oi-card"><legend class="oi-card-title">Chest CT input: region to analyse</legend>
+    <p class="oi-small">Uses the CT series (or NIfTI volume) of the current image${img ? '' : ' — select a CT image first'}. The scan is resampled in memory to ${P.input.pixdimMm.join(' × ')} mm and analysed in ${P.inferer.tile.join(' × ')}-voxel windows.</p>
+    <label class="oi-check"><input type="radio" name="oi-v3-roi" value="slab" data-change="v3-roi" ${R.roi === 'slab' ? raw('checked') : ''}><span><strong>Slab around the current slice</strong> (cropped to the body outline) ± <input type="number" class="oi-input" style="width:80px;display:inline-block" min="10" max="200" step="5" value="${R.slabMm}" data-change="v3-slab" aria-label="Half thickness in mm"> mm</span></label>
+    <label class="oi-check"><input type="radio" name="oi-v3-roi" value="rect" data-change="v3-roi" ${R.roi === 'rect' ? raw('checked') : ''}><span><strong>Selected rectangle</strong> — draw a rectangle annotation around the region on a slice of this series, keep it selected; the same ± mm applies</span></label>
+    <label class="oi-check"><input type="radio" name="oi-v3-roi" value="whole" data-change="v3-roi" ${R.roi === 'whole' ? raw('checked') : ''}><span><strong>Whole scan</strong> (cropped to the body outline) — slowest</span></label>
+    ${est.error ? notice('warn', est.error === 'lung-rect' ? 'Select a rectangle annotation drawn on this series first.' : est.error === 'irregular' ? 'This series has irregular or duplicate slice positions; it cannot be assembled into a volume.' : est.error === 'no-spacing' ? 'This series has no pixel spacing.' : est.error === 'not-ct' ? 'The current image is not a CT in Hounsfield units. Select an image of the chest CT series or CT NIfTI volume.' : 'Select an image of a CT series (8 or more slices) or a NIfTI CT volume.')
+      : notice('info', H`Region: about ${est.mm.map(function (v) { return num(v, 0); }).join(' × ')} mm → ${est.L.nwin} window(s). Estimated time in this browser: <strong>${fmtSec(est.sec)}</strong>${v3().secPerTile[P.id] ? ' (from your last run)' : ' (rough first estimate)'} using ${cpuThreads()} thread${cpuThreads() > 1 ? 's' : ''}${cpuThreads() > 1 ? '' : ' (this browser is not cross-origin isolated, so the model runs single-threaded)'}. For one nodule, a rectangle around it is fastest.${est.L.V.approx ? ' Slice positions are missing, so spacing comes from Slice Thickness (approximate).' : ''}`)}
+    ${notice('warn', 'Region and slab modes give the model less context at the borders than the whole scan; nodules cut by the border can be missed.')}</fieldset>`;
+}
+function v3Progress() {
+  var p = v3().progress; if (!p) return '';
+  return H`<div class="oi-card" role="status"><p class="oi-row oi-small"><span class="oi-spinner"></span> ${p.phase} · ${p.total > 1 ? Math.round(100 * p.done / p.total) + '% · about ' + fmtSec(p.left) + ' left' : ''}</p><progress max="${p.total}" value="${p.done}" style="width:100%"></progress><div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-sm" data-act="ai-cancel">Stop</button></div></div>`;
 }
 
 /* ====================================================================
@@ -1269,7 +1794,9 @@ function grayRecord(frames, w, h, extra) {
 async function ingestDicomBuffer(buf, source, uidMaps) {
   var p = parseDicom(buf), I = p.info;
   var px = await extractPixels(p);
-  var base = { isDicom: true, source: source, modality: I.modality, spacing: I.spacing && I.spacing.length >= 2 ? I.spacing.slice(0, 2) : (I.spacing && I.spacing.length === 1 ? [I.spacing[0], I.spacing[0]] : null), spacingSource: I.spacingSource, rescaled: I.slope !== 1 || I.intercept !== 0, unitsTag: I.units || I.rescaleType || '', tech: p.tech, identity: p.identity, identityPresent: p.identityPresent, burnedIn: I.burnedIn, lossy: !!px.lossy, tsName: I.tsName, invert: !!px.invert };
+  var base = { isDicom: true, source: source, modality: I.modality, spacing: I.spacing && I.spacing.length >= 2 ? I.spacing.slice(0, 2) : (I.spacing && I.spacing.length === 1 ? [I.spacing[0], I.spacing[0]] : null), spacingSource: I.spacingSource, rescaled: I.slope !== 1 || I.intercept !== 0, unitsTag: I.units || I.rescaleType || '', tech: p.tech, identity: p.identity, identityPresent: p.identityPresent, burnedIn: I.burnedIn, lossy: !!px.lossy, tsName: I.tsName, invert: !!px.invert,
+    // Slice geometry for 3D AI (kept in memory, never displayed or exported)
+    geo: { ipp: I.ipp && I.ipp.length === 3 ? I.ipp : null, iop: I.iop && I.iop.length === 6 ? I.iop : null, thickness: I.thickness, frames: px.frames.length } };
   var rec = px.kind === 'gray' ? grayRecord(px.frames, I.cols, I.rows, Object.assign(base, { wc: I.wc, ww: I.ww })) : Object.assign(base, { kind: 'rgb', frames: px.frames, w: I.cols, h: I.rows, range: { min: 0, max: 255 }, wl: { c: 128, w: 256 }, wl0: { c: 128, w: 256 } });
   delete rec.wc; delete rec.ww;
   // Study/series grouping keys are kept in memory only (UIDs are never displayed or exported).
@@ -1282,7 +1809,7 @@ async function ingestFiles(fileList) {
   var files = Array.prototype.slice.call(fileList || []).slice(0, CONFIG.maxFiles), total = files.reduce(function (a, f) { return a + f.size; }, 0);
   if (!files.length) return;
   if (total > CONFIG.maxTotalMB * 1048576) { toast('These files total ' + Math.round(total / 1048576) + ' MB, above the ' + CONFIG.maxTotalMB + ' MB in-browser limit. Load fewer files or use OHIF with a DICOMweb endpoint.'); return; }
-  var ok = 0, rejected = 0, failed = {}, nameRejected = 0;
+  var ok = 0, rejected = 0, failed = {}, nameRejected = 0, batch = 'b' + (++NIFTI_BATCH.n);
   S.loading = { done: 0, total: files.length }; scheduleRender();
   for (var i = 0; i < files.length; i++) {
     var f = files[i];
@@ -1290,7 +1817,11 @@ async function ingestFiles(fileList) {
       if (suspiciousFilename(f.name)) { nameRejected++; continue; }        // never stored, never logged
       if (f.size > CONFIG.maxFileMB * 1048576) { rejected++; continue; }
       var isRaster = /^image\/(png|jpeg|webp|bmp|tiff)$/i.test(f.type) || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(f.name);
-      if (isRaster) {
+      if (/\.nii(\.gz)?$/i.test(f.name)) {
+        var nb = await f.arrayBuffer();
+        await ingestNifti(nb, f.name, batch);                          // only a sequence hint is derived from the name
+        nb = null;
+      } else if (isRaster) {
         var d = await decodeBitmap(f);
         addImage({ isDicom: false, source: 'local-raster', modality: 'non-DICOM', kind: 'rgb', frames: [d.rgba], w: d.w, h: d.h, range: { min: 0, max: 255 }, wl: { c: 128, w: 256 }, wl0: { c: 128, w: 256 }, spacing: null, tech: { Format: (f.type || 'image').replace('image/', '').toUpperCase(), Width: d.w, Height: d.h, Note: 'File metadata (EXIF/GPS/device) is not read and is not exported.' }, identity: {}, identityPresent: [] }, 'raster-' + (S.order.length + 1), 'raster-series-' + (S.order.length + 1), 0);
       } else {
@@ -1413,7 +1944,7 @@ function inferenceExport() {
   var c = S.ai.card || {};
   return Object.assign(exportMeta(), { model: { name: c.name || null, version: c.version || null, source: c.source || null, license: c.license || null, runtime: c.runtime || (S.ai.mode === 'local' ? 'local-browser' : S.ai.mode === 'remote' ? 'user-endpoint' : 'none'), regulatoryStatus: c.regulatoryStatus || 'unknown / not claimed', validationStatus: c.validationStatus || null, calibrated: c.calibrated || 'unknown' },
     threshold: S.ai.threshold, lastRun: S.ai.lastRun,
-    outputs: S.ai.results.filter(function (r) { return !r.rejected; }).map(function (r) { return { id: r.id, type: r.type, label: 'AI suggestion: ' + r.label, score: r.score, scoreMeaning: 'Model output, not clinical certainty', uncertainty: r.uncertainty, aboveThreshold: r.score == null || r.score >= S.ai.threshold, accepted: !!r.accepted, coordinates: r.box ? r.box.map(function (v) { return Math.round(v * 10) / 10; }) : r.polygon ? r.polygon.map(function (p) { return [Math.round(p.x), Math.round(p.y)]; }) : r.point ? [Math.round(r.point.x), Math.round(r.point.y)] : [], maskReference: r.mask ? 'memory-only' : undefined, input: imgRef(r.imageId), sliceIndex: r.frame || 0, provenance: 'AI-derived experimental inference' }; }),
+    outputs: S.ai.results.filter(function (r) { return !r.rejected; }).map(function (r) { return { id: r.id, type: r.type, label: 'AI suggestion: ' + r.label, score: r.score, scoreMeaning: 'Model output, not clinical certainty', uncertainty: r.uncertainty, aboveThreshold: r.score == null || r.score >= S.ai.threshold, accepted: !!r.accepted, coordinates: r.box ? r.box.map(function (v) { return Math.round(v * 10) / 10; }) : r.polygon ? r.polygon.map(function (p) { return [Math.round(p.x), Math.round(p.y)]; }) : r.point ? [Math.round(r.point.x), Math.round(r.point.y)] : [], maskReference: r.mask ? 'memory-only' : undefined, measurement: r.detail || undefined, partOf: r.group || undefined, input: imgRef(r.imageId), sliceIndex: r.frame || 0, provenance: 'AI-derived experimental inference' }; }),
     warnings: [TEXT.modelOut, TEXT.confidence, TEXT.aiWarn] });
 }
 function summaryExport() {
@@ -1490,8 +2021,8 @@ function panelConnect() {
 function panelUpload() {
   return H`<h2>Upload Image</h2>${notice('warn', H`<strong>${TEXT.dicom}</strong> ${TEXT.burnedIn}`)}
     <div class="oi-grid-2" style="margin-top:12px">
-      <div class="oi-card"><div class="oi-card-title">${icon('upload')} DICOM files or folders (browser memory)</div><p class="oi-small">Parsed in your browser by the Oncotics Inspector (uncompressed and baseline-JPEG transfer syntaxes). Compressed syntaxes such as JPEG 2000, JPEG-LS or RLE open in the OHIF Viewer’s local mode. Nothing is uploaded; original filenames are never displayed or exported.</p>
-        <label class="oi-drop" data-drop="1"><input type="file" id="oi-file-dicom" multiple data-change="files" accept=".dcm,.dicom,application/dicom,*/*"><span>${icon('upload')} Choose DICOM files</span></label>
+      <div class="oi-card"><div class="oi-card-title">${icon('upload')} DICOM files or folders (browser memory)</div><p class="oi-small">Parsed in your browser by the Oncotics Inspector (uncompressed and baseline-JPEG transfer syntaxes). Compressed syntaxes such as JPEG 2000, JPEG-LS or RLE open in the OHIF Viewer’s local mode. Nothing is uploaded; original filenames are never displayed or exported. NIfTI volumes (.nii / .nii.gz, e.g. BraTS) are read too; header text fields are ignored and only a sequence hint (T1c, T1, T2, FLAIR) is taken from the file name.</p>
+        <label class="oi-drop" data-drop="1"><input type="file" id="oi-file-dicom" multiple data-change="files" accept=".dcm,.dicom,.nii,.gz,application/dicom,*/*"><span>${icon('upload')} Choose DICOM or NIfTI files</span></label>
         <label class="oi-drop"><input type="file" id="oi-file-dir" multiple webkitdirectory data-change="files"><span>${icon('upload')} Choose a DICOM folder</span></label></div>
       <div class="oi-card"><div class="oi-card-title">${icon('image')} Non-DICOM image (PNG, JPEG, WebP, BMP; TIFF where supported)</div><p class="oi-small"><strong>${TEXT.nonDicom}</strong> Not clinically equivalent to DICOM; no calibrated values. File metadata (EXIF/GPS/device) is not read and is not exported, but burned-in text in the pixels may remain.</p>
         <label class="oi-drop"><input type="file" id="oi-file-img" multiple data-change="files" accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"><span>${icon('image')} Choose images</span></label></div></div>
@@ -1552,10 +2083,10 @@ function panelAnnotations() {
       <div class="oi-card"><div class="oi-card-title">Series bookmarks (${S.seriesBookmarks.length})</div>${S.seriesBookmarks.length ? H`<ul class="oi-list">${S.seriesBookmarks.map(function (b) { return H`<li>${b.label}</li>`; })}</ul>` : H`<p class="oi-subtle">Bookmark a series from the series list.</p>`}</div></div>`;
 }
 function panelAI() {
-  var A = S.ai, img = curImg(), vis = aiVisible().filter(function (r) { return r.imageId === S.current; }), all = A.results.filter(function (r) { return r.imageId === S.current && !r.accepted; }), suppressed = all.length - vis.length;
+  var A = S.ai, img = curImg(), vk = curVolKeys()[0], forCur = function (r) { return !r.group && (r.imageId === S.current || !!(r.vols && r.vols.indexOf(vk) >= 0)); }, vis = aiVisible().filter(forCur), all = A.results.filter(function (r) { return forCur(r) && !r.accepted; }), suppressed = all.length - vis.length, pk = packSel();
   var modeSel = H`<fieldset class="oi-card"><legend class="oi-card-title">1 · Choose an inference source</legend>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="none" data-change="ai-mode" ${A.mode === 'none' ? raw('checked') : ''}><span><strong>None (default)</strong> — viewing, manual measurement and annotation only.</span></label>
-    <label class="oi-check"><input type="radio" name="oi-ai-mode" value="packs" data-change="ai-mode" ${A.mode === 'packs' ? raw('checked') : ''}><span><strong>Trained cancer AI models — self-hosted (recommended)</strong> — trained research models for chest X-ray findings (Mass, Nodule, Lung Lesion and 15 more) and H&E pathology tumour detection, run in your browser. The image never leaves it.</span></label>
+    <label class="oi-check"><input type="radio" name="oi-ai-mode" value="packs" data-change="ai-mode" ${A.mode === 'packs' ? raw('checked') : ''}><span><strong>Trained cancer AI models — self-hosted (recommended)</strong> — trained research models for chest X-ray findings (Mass, Nodule, Lung Lesion and 15 more), H&E pathology tumour detection, 3D brain MRI tumour segmentation (BraTS) and 3D lung CT nodule detection (LUNA16), run in your browser. The image never leaves it.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="builtin" data-change="ai-mode" ${A.mode === 'builtin' ? raw('checked') : ''}><span><strong>Automatic detection — built-in (instant, no download)</strong> — finds compact regions that stand out from their surroundings on the displayed image. Rule-based computer vision, not trained AI.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="sam" data-change="ai-mode" ${A.mode === 'sam' ? raw('checked') : ''}><span><strong>AI detection & segmentation — SAM ViT-B (self-hosted)</strong> — finds candidate regions, then outlines each with the Segment Anything AI model; or click any structure to segment it. Runs in your browser; the image never leaves it.</span></label>
     <label class="oi-check"><input type="radio" name="oi-ai-mode" value="local" data-change="ai-mode" ${A.mode === 'local' ? raw('checked') : ''}><span><strong>Local browser model (preferred)</strong> — an ONNX model and Oncotics model manifest you load from your device. No image leaves your browser.</span></label>
@@ -1576,6 +2107,7 @@ function panelAI() {
         return H`<div class="oi-pack"><label class="oi-check"><input type="radio" name="oi-ai-pack" value="${id}" data-change="ai-pack" ${S.ai.pack === id ? raw('checked') : ''} ${e.pack ? '' : raw('disabled')}><span><strong>${nm}</strong>${e.pack ? H` <span class="oi-subtle">· ${e.pack.card.modality.join(', ')} · ${num(e.pack.sizeBytes / 1048576, 0)} MB · ${e.pack.card.license}</span>` : ''}</span></label>
           <div class="oi-small" style="margin-left:26px">${e.status === 'checking' ? H`<span class="oi-spinner"></span> Checking…` : e.status === 'missing' ? H`<span class="oi-subtle">Not deployed on this site (${PACK_BASE}${id}/).</span>` : e.status === 'available' ? H`<button type="button" class="oi-btn oi-btn-sm" data-act="pack-load" data-id="${id}">${icon('spark')}Load model</button>` : e.status === 'loading' ? H`<span class="oi-spinner"></span> Loading and checking the model…` : e.status === 'ready' ? badge('Loaded · checksum verified', 'teal') : notice('bad', e.error || 'Could not load.')}
           ${e.pack && e.pack.notForUse ? notice('bad', 'TEST PACK built with untrained weights: outputs are meaningless.') : ''}</div></div>`; })}
+      ${pk && is3dPack(pk) && pk.status !== 'missing' ? v3Panel(pk) : ''}
       ${PACK_IDS.every(function (id) { return PACKS.map[id] && PACKS.map[id].status === 'missing'; }) ? notice('warn', H`<strong>No trained model packs are deployed on this site yet.</strong> Site operators: download the “oncotics-ai-model-packs” zip produced by the GitHub Actions workflow “Oncotics AI model packs” and upload its folders to ${PACK_BASE}. See docs/DEPLOY-HOSTINGER.md.`) : ''}</fieldset>`;
   if (A.mode === 'builtin') src = H`<div class="oi-card"><div class="oi-card-title">2 · Built-in detector</div><p class="oi-small">Runs instantly on the displayed image (current window/level) at reduced resolution. Change the window/level to target soft tissue, lung or bone. No network request is made.</p></div>`;
   if (A.mode === 'sam') src = H`<div class="oi-card"><div class="oi-card-title">2 · AI model on this site</div>
@@ -1587,20 +2119,20 @@ function panelAI() {
       ${SAM.status === 'error' ? notice('bad', SAM.error) : ''}</div>`;
   var card = A.card ? H`<div>${modelCardView(A.card)}<label class="oi-check" style="margin-top:8px"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I have reviewed the model card and limitations, and I understand outputs are experimental and not a diagnosis.</span></label></div>` : (A.mode === 'local' ? H`<p class="oi-subtle">The model card appears after a valid manifest is loaded.</p>` : A.mode === 'remote' ? H`<p class="oi-subtle">The endpoint’s model card (if it returns one) is shown after the first run; review it before relying on any output.</p>${A.remote.enabled ? H`<label class="oi-check"><input type="checkbox" data-change="ai-reviewed" ${A.reviewed ? raw('checked') : ''}><span>I understand the endpoint’s outputs are experimental and not a diagnosis.</span></label>` : ''}` : '');
   var samOk = SAM.status === 'available' || SAM.status === 'ready';
-  var pk = packSel(), packOk = !!(pk && (pk.status === 'available' || pk.status === 'ready'));
+  var packOk = !!(pk && (pk.status === 'available' || pk.status === 'ready') && v3Ready(pk));
   var canRun = A.mode !== 'none' && A.reviewed && img && consentState() && !A.running && (A.mode === 'packs' ? packOk : A.mode === 'builtin' ? true : A.mode === 'sam' ? samOk : A.mode === 'local' ? (A.model && A.modelBytes) : (A.remote.enabled && S.consent.remote));
   var results = H`<div class="oi-card"><div class="oi-card-title">4 · AI suggestions for the current image ${badge('AI suggestion', 'ai')}${badge('Experimental', 'warn')}${badge('Not a diagnosis', 'bad')}</div>
     <p class="oi-small">${TEXT.confidence} ${A.card && A.card.calibrated !== 'yes' ? H`<strong>Calibration: ${A.card.calibrated}.</strong> Scores may not correspond to frequencies.` : ''}</p>
     <label class="oi-row oi-small">Threshold <input type="range" min="0" max="1" step="0.01" value="${A.threshold}" data-change="ai-threshold" aria-label="Model score threshold"> <strong>${A.threshold.toFixed(2)}</strong> ${suppressed > 0 ? H`<span class="oi-subtle">· ${suppressed} lower-scoring suggestion(s) hidden by this threshold (not discarded)</span>` : ''}</label>
     ${A.lastRun && A.lastRun.imageId === S.current && !vis.length ? notice('info', H`<strong>${TEXT.noFindings}</strong>`) : ''}
-    ${vis.length ? H`<table class="oi-table"><thead><tr><th scope="col">Suggestion</th><th scope="col">Type</th><th scope="col">Label</th><th scope="col">Model score</th><th scope="col">Uncertainty</th><th scope="col">Actions</th></tr></thead><tbody>${vis.map(function (r) { return H`<tr><td>${r.id} ${badge('AI suggestion', 'ai')}</td><td>${r.type}</td><td>${r.label}</td><td>${r.score != null ? r.score.toFixed(3) : '—'} <span class="oi-subtle">(${scoreLabel(r.score)} — model output, not clinical certainty)</span></td><td>${r.uncertainty != null ? r.uncertainty.toFixed(3) : 'not provided'}</td><td>${r.type !== 'classification' && r.type !== 'heatmap' ? H`<button type="button" class="oi-btn oi-btn-sm" data-act="ai-accept" data-id="${r.id}">Accept as annotation</button>` : ''}<button type="button" class="oi-btn oi-btn-sm oi-btn-ghost" data-act="ai-reject" data-id="${r.id}">Reject / hide</button></td></tr>`; })}</tbody></table>` : ''}
+    ${vis.length ? H`<table class="oi-table"><thead><tr><th scope="col">Suggestion</th><th scope="col">Type</th><th scope="col">Label</th><th scope="col">Model score</th><th scope="col">Uncertainty</th><th scope="col">Actions</th></tr></thead><tbody>${vis.map(function (r) { return H`<tr><td>${r.id} ${badge('AI suggestion', 'ai')}</td><td>${r.type}</td><td>${r.label}${r.detail ? H`<br><span class="oi-small">${r.detail}</span>` : ''}</td><td>${r.score != null ? r.score.toFixed(3) : '—'} <span class="oi-subtle">(${scoreLabel(r.score)} — model output, not clinical certainty)</span></td><td>${r.uncertainty != null ? r.uncertainty.toFixed(3) : 'not provided'}</td><td>${r.gotoFrame != null ? H`<button type="button" class="oi-btn oi-btn-sm" data-act="ai-goto" data-id="${r.id}">Show</button>` : ''}${r.type !== 'classification' && r.type !== 'heatmap' ? H`<button type="button" class="oi-btn oi-btn-sm" data-act="ai-accept" data-id="${r.id}">${r.vols ? 'Accept (all slices)' : 'Accept as annotation'}</button>` : ''}<button type="button" class="oi-btn oi-btn-sm oi-btn-ghost" data-act="ai-reject" data-id="${r.id}">Reject / hide</button></td></tr>`; })}</tbody></table>` : ''}
     <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-sm" data-act="ai-clear">Clear all AI results</button><button type="button" class="oi-btn oi-btn-sm" data-act="export" data-kind="inference">${icon('download')}Export inference JSON</button></div></div>`;
   return H`<h2>Experimental AI Detection & Inference</h2>
     ${notice('bad', H`<strong>${TEXT.aiWarn}</strong> ${TEXT.modelOut}`)}
     <div class="oi-grid-2" style="margin-top:10px">${notice('warn', H`<strong>Patients and caregivers:</strong> ${TEXT.patient}`)}${notice('warn', H`<strong>Clinicians:</strong> ${TEXT.clinician}`)}</div>
     <div class="oi-stack" style="margin-top:12px">${modeSel}${src}${A.mode !== 'none' ? H`<div class="oi-card"><div class="oi-card-title">3 · Review the model card, then run</div>${card}
-      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : A.mode === 'packs' ? (pk && pk.pack && pk.pack.task === 'pathology-patch' ? 'Run tumour detection on the current image' : 'Run chest X-ray AI on the current image') : A.mode === 'builtin' ? 'Run automatic detection on the current image' : A.mode === 'sam' ? 'Detect & segment with AI on the current image' : 'Run detection / inference on the current image'}</button>${A.mode === 'sam' ? H`<button type="button" class="oi-btn" data-act="tool" data-tool="aiclick" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" ${samOk && A.reviewed && img && consentState() ? '' : raw('disabled')}>${icon('scan')}${S.tool === 'aiclick' ? 'Click-to-segment is on: click the image' : 'AI click-to-segment'}</button>` : ''}<span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
-      ${A.error ? notice('bad', A.error) : ''}</div>` : ''}
+      <div class="oi-card-foot"><button type="button" class="oi-btn oi-btn-primary" data-act="ai-run" ${canRun ? '' : raw('disabled')}>${icon('play')}${A.running ? 'Running…' : A.mode === 'packs' ? (pk && pk.pack && pk.pack.task === 'pathology-patch' ? 'Run tumour detection on the current image' : pk && pk.pack && pk.pack.task === 'brain-mri-seg-3d' ? 'Run 3D brain tumour segmentation' : pk && pk.pack && pk.pack.task === 'lung-ct-detection-3d' ? 'Run 3D lung nodule detection on this series' : 'Run chest X-ray AI on the current image') : A.mode === 'builtin' ? 'Run automatic detection on the current image' : A.mode === 'sam' ? 'Detect & segment with AI on the current image' : 'Run detection / inference on the current image'}</button>${A.mode === 'sam' ? H`<button type="button" class="oi-btn" data-act="tool" data-tool="aiclick" aria-pressed="${S.tool === 'aiclick' ? 'true' : 'false'}" ${samOk && A.reviewed && img && consentState() ? '' : raw('disabled')}>${icon('scan')}${S.tool === 'aiclick' ? 'Click-to-segment is on: click the image' : 'AI click-to-segment'}</button>` : ''}<span class="oi-subtle">${!consentState() ? 'Consent required. ' : ''}${!img ? 'Select an image. ' : ''}${!A.reviewed ? 'Confirm model-card review. ' : ''}Never runs automatically; one run at a time.</span></div>
+      ${A.running ? v3Progress() : ''}${A.error ? notice('bad', A.error) : ''}</div>` : ''}
       ${S.images.size ? H`<div class="oi-card"><div class="oi-card-title">Current image</div>${inspectorPanel(false)}</div>` : ''}
       ${A.results.length || A.lastRun ? results : ''}</div>`;
 }
@@ -1687,7 +2219,7 @@ function clearSession(silent) {
   S.images.forEach(function (im) { im.frames.forEach(function (f) { try { f.fill(0); } catch (e) { /* ignore */ } }); im.identity = null; });
   URLS.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } }); URLS.clear();
   Inspector.clearCache(); if (S.ai.session && S.ai.session.release) { try { S.ai.session.release(); } catch (e) { /* ignore */ } }
-  SAM.emb = null; SAM.embKey = null;   // image-derived AI embedding (the model itself holds no image data)
+  SAM.emb = null; SAM.embKey = null; Object.keys(PACKS.map).forEach(function (k) { workerStop(PACKS.map[k]); });   // image-derived AI embedding (the model itself holds no image data)
   S = freshState(); UIDS = { study: uidMapper(), series: uidMapper() }; MODAL = null; renderModal();
   Array.prototype.forEach.call(ROOT.querySelectorAll('input[type=file]'), function (i) { i.value = ''; });
   render(); if (!silent) { toast('Imaging session cleared. Nothing was stored.'); announce('Imaging session cleared: images, annotations, inference results, endpoints and tokens were wiped from memory.'); }
@@ -1714,7 +2246,7 @@ var ACT = {
   theme: function (el) { var t = el.getAttribute('data-theme'); if (t === 'system' || t === 'light' || t === 'dark') { DISPLAY.theme = t; scheduleRender(); announce('Theme: ' + t + '.'); } },
   tool: function (el) { S.tool = el.getAttribute('data-tool'); S.pending = null; scheduleRender(); setTimeout(function () { Inspector.canvas.focus({ preventScroll: true }); }, 40); },
   'view-reset': function () { Inspector.reset(); scheduleRender(); }, step: function (el) { Inspector.step(parseInt(el.getAttribute('data-dir'), 10)); },
-  'select-img': function (el) { S.current = el.getAttribute('data-id'); S.frame = 0; S.panel = S.panel === 'ai' ? 'ai' : 'inspect'; scheduleRender(); },
+  'select-img': function (el) { S.current = el.getAttribute('data-id'); var si = S.images.get(S.current); S.frame = si && si.vol ? Math.floor(si.frames.length / 2) : 0; S.panel = S.panel === 'ai' ? 'ai' : 'inspect'; scheduleRender(); },
   'select-ann': function (el) { var a = S.annotations.find(function (x) { return x.id === el.getAttribute('data-id'); }); if (!a) return; S.selected = a.id; S.current = a.imageId; S.frame = a.frame || 0; S.panel = 'inspect'; scheduleRender(); },
   'del-ann': function (el) { removeAnn(el.getAttribute('data-id')); },
   'key-image': function () { var im = curImg(); if (!im) return; var k = S.keyImages.findIndex(function (x) { return x.imageId === im.id && x.frame === S.frame; }); if (k >= 0) S.keyImages.splice(k, 1); else S.keyImages.push({ imageId: im.id, frame: S.frame, label: imgLabel(im) }); scheduleRender(); },
@@ -1727,7 +2259,7 @@ var ACT = {
   'dw-load': function (el) { var s = S.dicomweb.studies && S.dicomweb.studies[parseInt(el.getAttribute('data-i'), 10)]; if (s) dwLoadStudy(s.uid); },
   'ohif-open': function (el) { ohifOpen(el.getAttribute('data-mode')); }, 'ohif-close': function () { ohifClose(); },
   'ohif-demo': function () { confirmBox('Open the official OHIF demo viewer?', notice('bad', H`This opens <strong>viewer.ohif.org</strong> in a new tab. Your browser will load assets from that external host, which Oncotics does not control. Files you open there are handled by that page under its own policies. Oncotics passes nothing to it.`), 'Open external viewer').then(function (ok) { if (ok) window.open(CONFIG.externalOhifDemo, '_blank', 'noopener,noreferrer'); }); },
-  'ai-run': function () { runInference(); }, 'ai-accept': function (el) { acceptSuggestion(el.getAttribute('data-id')); }, 'ai-reject': function (el) { rejectSuggestion(el.getAttribute('data-id')); },
+  'ai-run': function () { runInference(); }, 'ai-cancel': function () { cancel3d(); }, 'ai-goto': function (el) { aiGoto(S.ai.results.find(function (x) { return x.id === el.getAttribute('data-id'); })); }, 'ai-accept': function (el) { acceptSuggestion(el.getAttribute('data-id')); }, 'ai-reject': function (el) { rejectSuggestion(el.getAttribute('data-id')); },
   'ai-clear': function () { S.ai.results = []; S.ai.lastRun = null; Inspector.clearCache(); scheduleRender(); toast('AI results cleared from memory.'); },
   'ai-remote-off': function () { S.ai.remote = { url: '', token: '', model: '', enabled: false }; S.consent.remote = false; if (S.ai.mode === 'remote') { S.ai.mode = 'none'; S.ai.reviewed = false; S.ai.card = null; } scheduleRender(); toast('Remote endpoint disabled and forgotten.'); },
   'context-q': function (el) { contextSearch(el.getAttribute('data-q')); },
@@ -1752,6 +2284,7 @@ var CHANGE = {
   notes: function (el) { if (!el.checked) { S.notesEnabled = false; S.exportNotes = false; S.annotations.forEach(function (a) { a.note = ''; }); scheduleRender(); return; } el.checked = false; confirmBox('Enable free-text notes?', notice('bad', 'Notes stay in memory only and are never sent anywhere, but anything you type could be identifying. Do not enter PHI. Notes are excluded from exports unless you opt in.'), 'Enable notes').then(function (ok) { if (ok) { S.notesEnabled = true; scheduleRender(); } }); },
   'export-notes': function (el) { S.exportNotes = el.checked; },
   'ai-mode': function (el) { S.ai.mode = el.value; S.ai.reviewed = false; S.ai.error = null; if (el.value !== 'local') S.ai.model = null; S.ai.card = el.value === 'builtin' ? BUILTIN_CARD : el.value === 'sam' ? SAM_CARD : el.value === 'packs' && packSel() && packSel().card ? packSel().card : null; if (el.value === 'sam') samCheck(); if (el.value === 'packs') packsCheck(); if (el.value !== 'sam' && S.tool === 'aiclick') S.tool = 'pan'; scheduleRender(); },
+  'v3-ch': function (el) { v3().ch[el.getAttribute('data-ch')] = el.value; scheduleRender(); }, 'v3-roi': function (el) { v3().roi = el.value; scheduleRender(); }, 'v3-slab': function (el) { var v = parseFloat(el.value); v3().slabMm = isFinite(v) ? Math.max(10, Math.min(200, v)) : 40; scheduleRender(); },
   'ai-pack': function (el) { var e = PACKS.map[el.value]; if (!e || !e.pack) return; S.ai.pack = el.value; S.ai.card = e.card; S.ai.reviewed = false; S.ai.error = null; scheduleRender(); },
   'viewer-bg': function (el) { if (VIEWER_BG[el.value]) { DISPLAY.viewerBg = el.value; Inspector.draw(); scheduleRender(); } },
   'ai-reviewed': function (el) { S.ai.reviewed = el.checked; scheduleRender(); },

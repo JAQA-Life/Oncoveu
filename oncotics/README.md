@@ -13,6 +13,7 @@ sources.
 | `/assets/globe/` | Self-hosted CesiumJS for the Overview globe (optional; built-in renderer otherwise) | `scripts/fetch-vendor-assets.sh` |
 | `/assets/ort/` | Self-hosted ONNX Runtime Web for local Workbench inference (optional) | `scripts/fetch-vendor-assets.sh` |
 | `/assets/models/sam-b/` | Self-hosted SAM ViT-B AI model for Workbench AI detection & segmentation (optional) | `scripts/fetch-ai-models.sh` |
+| `/assets/models/<pack>/` | Trained cancer AI model packs: chest X-ray, H&E pathology, 3D brain MRI tumour segmentation, 3D lung CT nodule detection (optional) | GitHub Actions "Oncotics AI model packs" (`ai/build_model_packs.py`) |
 
 ## Build
 

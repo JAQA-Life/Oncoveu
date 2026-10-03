@@ -20,6 +20,11 @@ Every run is an explicit click. The AI modes are:
   - SAM is trained on natural images, not medical images.
   - If the files are not deployed, the panel says so and nothing falls back to another host.
 
+- **Trained cancer AI models (self-hosted model packs).** Research models converted from their
+  authors' official weights by `oncotics/ai/build_model_packs.py` (GitHub Actions workflow
+  "Oncotics AI model packs") and served from `/assets/models/<pack-id>/`. See
+  [Trained model packs](#trained-model-packs-oncotics-model-pack1) below.
+
 A user can also supply their own model:
 
 - **Local browser model (preferred).** An `.onnx` file plus a manifest JSON
@@ -142,3 +147,37 @@ normalised (0–1).
 
 The endpoint must send CORS headers that allow `https://oncotics.com`. The Workbench CSP allows `https:`
 endpoints, plus `http://localhost` and `http://127.0.0.1` for local research servers.
+
+## Trained model packs (`oncotics-model-pack/1`)
+
+Each pack folder contains `model.onnx`, `pack.json` and the source licence/README files. The page
+reads `pack.json`, downloads `model.onnx` from this site only, and checks its SHA-256 before loading.
+
+| Pack | Task | Source | Browser pipeline |
+|---|---|---|---|
+| `cxr-xrv-densenet121` | `cxr-classification` | TorchXRayVision `densenet121-res224-all` | centre crop → 224 px → `(2·v/255 − 1)·1024` → sigmoid → operating-point normalisation; CAM heatmaps |
+| `path-camelyon16-resnet18` | `pathology-patch` | MONAI `pathology_tumor_detection` | 224 px tiles (white padding) → bundle `ScaleIntensityRange` → sigmoid; heatmap + regions |
+| `brain-mri-brats-segresnet` | `brain-mri-seg-3d` | MONAI `brats_mri_segmentation` | 4 volumes (T1c, T1, T2, FLAIR, bundle channel order) in stored voxel order → `NormalizeIntensity(nonzero, channel_wise)` → 128³ sliding window (bundle overlap, constant blending) → sigmoid → 0.5 → TC / WT / ET masks per slice + volumes |
+| `lung-ct-luna16-retinanet` | `lung-ct-detection-3d` | MONAI `lung_nodule_ct_detection` | volume from NIfTI affine or DICOM IPP/IOP → RAS → trilinear resampling to the bundle `pixdim` → `ScaleIntensityRange(clip)` → zero padding to `size_divisible` → 192 × 192 × 96 windows (25 % overlap, head maps averaged) → anchors, box decoding, score threshold, top-k, clipping, NMS (bundle values) → 3D boxes → per-slice boxes |
+
+`pack.json` fields used by the page: `schema`, `id`, `task`, `card` (model card, shown before every
+run), `input`, `output`, `labels`, `sha256`, `sizeBytes`, plus task-specific blocks (`inferer`,
+`anchors`, `boxCoder`, `selector` for the 3D packs). `verification` records the numerical checks made
+at build time; `notForUse: true` marks pipeline test packs built with untrained weights.
+
+How the 3D packs are verified (each check fails the build or the workflow):
+
+1. ONNX model vs the original PyTorch network on random inputs (several window sizes).
+2. `oncotics/ai/pipeline3d.py` (the reference the browser code is ported from) vs MONAI itself:
+   `NormalizeIntensity` + `sliding_window_inference` for the brain, `RetinaNetDetector` (plain
+   forward and `SlidingWindowInferer`) for the lung.
+3. The built Workbench in headless Chromium (`oncotics/ai/e2e_workbench_3d.mjs`) vs MONAI's own
+   transforms, inferer and detector (`oncotics/ai/reference_3d.py`) on synthetic NIfTI volumes, and
+   for the lung also on the same CT written as a shuffled DICOM series.
+
+The 3D models run in a Web Worker so the page stays responsive. With cross-origin isolation (the
+site's `.htaccess` sends `Cross-Origin-Embedder-Policy: credentialless` on the Workbench) they use up
+to four WebAssembly threads; otherwise one. Differences from the bundles' own inference, shown in the
+model cards: the brain bundle uses 240 × 240 × 160 windows (the browser uses 128³ to fit in browser
+memory); the lung bundle runs a whole scan in one pass up to 512 × 512 × 192 voxels (the browser always
+uses 192 × 192 × 96 windows and lets the user restrict the region).

@@ -92,12 +92,12 @@ var Inspector = (function () {
       g.save(); g.globalAlpha = S.layers.aiOpacity;
       aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) {
         g.strokeStyle = '#F0ABFC'; g.lineWidth = 2; g.setLineDash([6, 4]);
-        if (r.mask) { g.globalAlpha = S.layers.aiOpacity; g.imageSmoothingEnabled = false; g.drawImage(maskCanvas(r.mask, [232, 121, 249], r.type === 'heatmap'), t.ox, t.oy, img.w * t.s, img.h * t.s); g.imageSmoothingEnabled = true; }
+        if (r.mask) { g.globalAlpha = S.layers.aiOpacity; g.imageSmoothingEnabled = false; g.drawImage(maskCanvas(r.mask, r.color || [232, 121, 249], r.type === 'heatmap'), t.ox, t.oy, img.w * t.s, img.h * t.s); g.imageSmoothingEnabled = true; }
         if (r.box) { var b = r.box; g.strokeRect(t.ox + b[0] * t.s, t.oy + b[1] * t.s, (b[2] - b[0]) * t.s, (b[3] - b[1]) * t.s); }
         if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); }
         if (r.point) { g.setLineDash([]); g.beginPath(); g.arc(t.ox + r.point.x * t.s, t.oy + r.point.y * t.s, 7, 0, 2 * Math.PI); g.stroke(); }
         var lp = r.box ? { x: r.box[0], y: r.box[1] } : r.polygon ? r.polygon[0] : r.point ? r.point : r.mask ? { x: r.mask.bbox[0], y: r.mask.bbox[1] } : null;
-        if (lp) { g.setLineDash([]); g.globalAlpha = Math.min(1, S.layers.aiOpacity + 0.3); g.font = '600 11px system-ui,sans-serif'; var txt = 'AI suggestion ' + r.id + ' · ' + (r.score != null ? r.score.toFixed(2) : '—'); g.fillStyle = 'rgba(30,6,40,.85)'; g.fillRect(t.ox + lp.x * t.s, t.oy + lp.y * t.s - 17, g.measureText(txt).width + 10, 16); g.fillStyle = '#F5D0FE'; g.fillText(txt, t.ox + lp.x * t.s + 5, t.oy + lp.y * t.s - 5); }
+        if (lp) { g.setLineDash([]); g.globalAlpha = Math.min(1, S.layers.aiOpacity + 0.3); g.font = '600 11px system-ui,sans-serif'; var txt = 'AI suggestion ' + (r.group || r.id) + ' · ' + (r.score != null ? r.score.toFixed(2) : '—'); g.fillStyle = 'rgba(30,6,40,.85)'; g.fillRect(t.ox + lp.x * t.s, t.oy + lp.y * t.s - 17, g.measureText(txt).width + 10, 16); g.fillStyle = '#F5D0FE'; g.fillText(txt, t.ox + lp.x * t.s + 5, t.oy + lp.y * t.s - 5); }
       });
       g.restore();
     }
@@ -187,7 +187,7 @@ var Inspector = (function () {
   function renderToCanvas(img, withOverlays) {
     var c = document.createElement('canvas'); c.width = img.w; c.height = img.h; var g = c.getContext('2d'); g.drawImage(display(img), 0, 0);
     if (withOverlays) { var saved = view, sizeEl = { clientWidth: img.w, clientHeight: img.h }; var t = { s: 1, ox: 0, oy: 0 };
-      if (S.layers.ai) aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) { g.strokeStyle = '#E879F9'; g.lineWidth = Math.max(2, img.w / 400); g.setLineDash([6, 4]); if (r.mask) g.drawImage(maskCanvas(r.mask, [232, 121, 249], r.type === 'heatmap'), 0, 0, img.w, img.h); if (r.box) g.strokeRect(r.box[0], r.box[1], r.box[2] - r.box[0], r.box[3] - r.box[1]); if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); } });
+      if (S.layers.ai) aiVisible().filter(function (r) { return r.imageId === img.id && (r.frame || 0) === S.frame; }).forEach(function (r) { g.strokeStyle = '#E879F9'; g.lineWidth = Math.max(2, img.w / 400); g.setLineDash([6, 4]); if (r.mask) g.drawImage(maskCanvas(r.mask, r.color || [232, 121, 249], r.type === 'heatmap'), 0, 0, img.w, img.h); if (r.box) g.strokeRect(r.box[0], r.box[1], r.box[2] - r.box[0], r.box[3] - r.box[1]); if (r.polygon) { shapePath(g, { type: 'aipoly', points: r.polygon }, t); g.stroke(); } });
       if (S.layers.ann) S.annotations.filter(function (a) { return a.imageId === img.id && (a.frame || 0) === S.frame; }).forEach(function (a) { g.setLineDash([]); g.strokeStyle = '#2DD4BF'; g.lineWidth = Math.max(2, img.w / 400); if (a.type === 'mask') g.drawImage(maskCanvas(a.mask, [45, 212, 191], false), 0, 0, img.w, img.h); else { shapePath(g, a, t); g.stroke(); } });
       view = saved; void sizeEl; }
     return c;
