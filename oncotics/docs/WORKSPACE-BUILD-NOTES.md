@@ -113,11 +113,17 @@ site build copies that file to `/precision-oncology-workspace/`.
   4. Everything else.
 - Every module reflects a free-text concept with its own slice of the fan-out (`CX_MODULES`). The rail
   and the Overview module counts include those records.
-- Per-module search (`MOD_SEARCH` in `10-mod-a.js`, `SUBMITS['mod-search']` in `14-app.js`): every data
-  module has its own search box with its own term (memory only, cleared by Clear Session).
-  - It runs the full live search and prefers the module's entity types in order (for example Drug
-    Intelligence → drug).
-  - It keeps the user in that module.
+- Per-module search (`10f-module-search.js`; `MOD_SEARCH` in `10-mod-a.js`) is **independent of the
+  common search**.
+  - Each data module's box queries only that module's live sources (`MS_JOBS`). For example, Trials
+    calls only ClinicalTrials.gov; Drug Intelligence calls openFDA, RxNorm, ChEMBL, PubChem and DGIdb;
+    Biology calls the gene, protein and pathway sources.
+  - Results show inside that module only. The query is read with the module's preferred types (typed
+    loaders such as FDA labels for a drug reading) and falls back to free-text searches.
+  - It never changes the common query, its interpretation, the Overview or other modules. A common
+    search does not clear it.
+  - State lives in `State.ms`, memory only, with its own AbortController. "Clear this search" or
+    Clear Session wipes it.
   - The PHI guard applies.
 
 ## CSP

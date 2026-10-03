@@ -56,7 +56,8 @@ present. Tokens are memory only.
 
 ## Searching
 - The global search box interprets the query; see the scores in Overview → Search Interpretation.
-- Every data module also has its own **Search in <module>** box.
+- Every data module also has its own **Search in <module>** box. It is independent of the common search: it
+  queries only that module's live sources and shows the results in that module.
 - A free-text clinical concept is sent to every live source with a free-text search (30 sources), and
   each result links to its official source.
 

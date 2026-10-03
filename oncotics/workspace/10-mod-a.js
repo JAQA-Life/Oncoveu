@@ -22,9 +22,9 @@ var MODULE_INFO = [
   ['session-privacy', 'Session & Privacy', 'lock', 'Privacy model, legal notices, optional keys and session controls.']
 ];
 function modMeta(id) { var m = MODULE_INFO.find(function (x) { return x[0] === id; }); return { id: m[0], label: m[1], icon: m[2], desc: m[3] }; }
-// Per-module search: every data module has its own search box. Its term is kept separately for that
-// module (memory only); submitting runs the full live search, prefers the module's own entity types
-// when the query can be read that way, and keeps the user in the module.
+// Per-module search: every data module has its own, independent search box (see 10f-module-search.js).
+// It queries only that module's live sources, shows the results inside the module and never changes
+// the common search. `prefer` is the order of readings the module tries before falling back to free text.
 var MOD_SEARCH = {
   'clinical-evidence': { ph: 'Gene, variant, therapy or disease (e.g. KRAS G12C)', prefer: ['variant', 'gene', 'drug', 'disease'] },
   'trials': { ph: 'Condition, drug, gene or NCT ID (e.g. NCT02296125)', prefer: ['nct', 'regid', 'disease', 'drug', 'gene', 'variant'] },
@@ -37,17 +37,17 @@ var MOD_SEARCH = {
   'expert-knowledge': { ph: 'Gene or variant (e.g. BRAF V600E)', prefer: ['variant', 'gene'] },
   'relationships': { ph: 'Any concept to explore relationships', prefer: [] },
   'global-coverage': { ph: 'Any concept to check coverage', prefer: [] },
-  'comparison': { ph: 'Search a new item to compare', prefer: [] },
+  'comparison': null,
   'advanced-query': null, 'session-board': null, 'coverage-console': null, 'session-privacy': null, 'overview': null
 };
 function moduleSearch(id) {
   var cfg = MOD_SEARCH[id]; if (!cfg) return '';
-  var m = modMeta(id), v = (State.modq && State.modq[id]) || '', fid = 'ow-ms-' + id;
+  var m = modMeta(id), M = State.ms && State.ms[id], v = M ? M.q : '', fid = 'ow-ms-' + id, n = msJobsFor(id, null).length;
   return H`<form class="ow-modsearch" role="search" data-submit="mod-search" data-mod="${id}" aria-label="Search in ${m.label}" autocomplete="off">
     <label for="${fid}">${icon('search')}<span>Search in ${m.label}</span></label>
     <input id="${fid}" name="q" type="search" maxlength="200" spellcheck="false" autocomplete="off" placeholder="${cfg.ph}" value="${v}">
     <button type="submit" class="ow-btn ow-btn-primary ow-btn-sm">Search</button>
-    <span class="ow-subtle ow-small">Queries every relevant live source and stays in this module. Do not enter patient-identifying information.</span></form>`;
+    <span class="ow-subtle ow-small">Independent of the common search: queries only ${m.label}'s live sources (${n}+) and shows the results here. Do not enter patient-identifying information.</span></form>${safeRender(function () { return moduleSearchResults(id); }, m.label + ' search results')}`;
 }
 function moduleHead(id, extra) {
   var m = modMeta(id);
