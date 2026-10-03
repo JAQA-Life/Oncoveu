@@ -259,16 +259,28 @@ function liveSignals(c) {
   if (t === 'device') { var au = ok('dev:auth'); if (au) add('openFDA device authorization record found (may lag official DB)', 8, 'openFDA device'); else if (empty('dev:auth')) add('openFDA returned no authorization record (records may lag the official FDA database)', -12, 'openFDA device'); }
   if ((t === 'vaccine' || t === 'fertility' || t === 'imaging' || t === 'concept' || t === 'drugctx') && tr) add('ClinicalTrials.gov returned ' + num(tr.total) + ' related studies', tr.total ? 1 : 0, 'ClinicalTrials.gov');
   if ((t === 'vaccine' || t === 'fertility' || t === 'imaging' || t === 'concept') && lit) add('Europe PMC returned ' + num(lit.total) + ' records', lit.total ? 1 : 0, 'Europe PMC');
+  if (t === 'concept') cxConceptSignals(add);   // free-text concept: every live source that answered
   return { signals: out, supporting: uniq(sup), conflicting: uniq(con) };
 }
 function liveInterpretation() {
   var I = State.interp; if (!I) return null;
   var sel = State.entity && State.ctx ? I.selectedKey : null;
+  // Free-text concepts: readings suggested by exact name matches in the live sources (rebuilt each render).
+  var D = cxDerived();
+  I.candidates = I.candidates.filter(function (c) { return !c.derivedType; });
   I.candidates.forEach(function (c) {
-    var L = c.key === sel || (!sel && c === I.top) ? liveSignals(c) : { signals: [], supporting: [], conflicting: [] };
+    var dv = c.key !== sel && D[c.type];
+    var L = c.key === sel || (!sel && c === I.top) ? liveSignals(c) : dv ? { signals: [sig('Exact name match in ' + dv.sources.join(', '), 'live', Math.max(0, dv.score - c.base), dv.sources[0])], supporting: dv.sources.slice(), conflicting: [] } : { signals: [], supporting: [], conflicting: [] };
+    if (dv) dv.used = true;
     c.liveSignals = L.signals; c.supporting = L.supporting; c.conflicting = L.conflicting;
     var delta = L.signals.reduce(function (a, x) { return a + x.delta; }, 0);
     c.score = Math.max(0, Math.min(99, Math.round(c.base + delta))); c.scoreLabel = scoreLabel(c.score);
+  });
+  Object.keys(D).forEach(function (k) {
+    var o = D[k]; if (o.used) return;
+    var dc = mkCand(k, 'live-derived', o.label, o.score, 'Live sources report an entity with exactly this name: ' + o.sources.join(', ') + '. Choose it to re-run the workspace as a ' + k + '.', [sig('Exact ' + k + ' name match in ' + o.sources.join(', '), 'live', 0, o.sources[0])], null);
+    dc.key = 'live:' + k; dc.derivedType = k; dc.score = o.score; dc.scoreLabel = scoreLabel(o.score); dc.supporting = o.sources.slice(); dc.flags.push('Live-derived from source search results');
+    I.candidates.push(dc);
   });
   // Label-mentioned target genes (live-derived alternative for drug queries).
   var lb = slot('drug:labels');

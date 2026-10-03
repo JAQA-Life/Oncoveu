@@ -541,15 +541,15 @@ var CHANGES = {
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
 Object.assign(ACTIONS, {
-  'interp-use': function (el) { if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
-  'interp-search': function (el) { var c = interpCand(el); if (c) runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
+  'interp-use': function (el) { var c = interpCand(el); if (c && c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: State.interpModule || undefined }); return; } if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
+  'interp-search': function (el) { var c = interpCand(el); if (!c) return; if (c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: MOD[c.module] ? c.module : 'overview' }); return; } runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
   'interp-refine': function () { var q = $('#ow-q'); if (q) { q.focus(); q.select(); } announce('Edit the query in the search box and press Explore.'); },
   'interp-sources': function (el) {
     var c = interpCand(el); if (!c) return;
     openModal('Sources for “' + typeName(c) + '”', function () { var list = interpSourcesFor(c); return H`<p class="ow-subtle">Sources Oncotics may use for this interpretation. Live sources are queried directly by your browser; others open the official site.</p>${table([{ label: 'Source', render: function (x) { return H`<strong>${x.displayName}</strong>`; } }, { label: 'Mode', render: function (x) { return modeBadge(x.id); } }, { label: 'Kind', key: 'kind' }, { label: 'Flags', render: function (x) { return flagBadges(x); } }, { label: 'Official', render: function (x) { return ext(x.officialSiteUrl || linkout(x.id, ''), 'Open'); } }], list)}`; });
   },
   'interp-pin': function (el) { var c = interpCand(el); if (!c) return; pinRecord(putRecord('interpretation', typeName(c) + ': ' + c.normalized + ' (' + c.score + ' ' + c.scoreLabel + ')', 'oncotics', { type: c.type, normalized: c.normalized, score: c.score, label: c.scoreLabel, why: c.why }, { source: 'oncotics', sourceName: 'Oncotics interpretation (heuristic)', endpoint: 'interpretation', retrievedAt: isoNow(), category: 'heuristic-interpretation' })); },
-  'interp-module': function (el) { var c = interpCand(el); if (!c) return; if (State.interp.selectedKey === c.key && State.ctx) setModule(c.module, { focus: true }); else runSearch(State.interp.query, { pick: c.key, module: c.module }); },
+  'interp-module': function (el) { var c = interpCand(el); if (!c) return; if (State.interp.selectedKey === c.key && State.ctx) setModule(c.module, { focus: true }); else if (c.derivedType) runSearch(c.normalized, { type: c.derivedType, module: c.module }); else runSearch(State.interp.query, { pick: c.key, module: c.module }); },
   'interp-export': function () { var x = interpExport(); if (!x) { toast('No interpretation yet.'); return; } exportWarn('search interpretation (JSON)').then(function (ok) { if (ok) download(CONFIG.exportNames.interpretation + '.json', 'application/json', JSON.stringify({ metadata: exportMeta(['Oncotics interpretation engine']), interpretation: x }, null, 2)); }); },
   'interp-help': function () { openModal('How interpretation confidence works', interpHelp); },
   // ---- Globe

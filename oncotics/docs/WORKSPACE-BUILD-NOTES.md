@@ -97,6 +97,22 @@ site build copies that file to `/precision-oncology-workspace/`.
   - When no specific reading reaches Medium confidence, the query runs as a free-text concept
     automatically instead of waiting. Confirmation is required only when two specific readings
     are ambiguous (for example AMH).
+- Confidence for free-text concepts uses every live source.
+  - Each source that returns records adds a live signal (`cxConceptSignals`).
+  - Exact name matches reported by the sources become **live-derived readings**, for example a disease
+    reading when OLS, OncoTree or Open Targets report the exact name (`cxDerived`). Choosing one re-runs
+    the workspace as that type.
+  - The panel also shows fan-out analytics: sources queried, answered, with records and not reachable,
+    records per source, and sources with records by category.
+- Overview order:
+  1. Search Interpretation, with a confidence table for every interpretation, analytics and the
+     candidate cards.
+  2. Geographic Activity Globe and Molecular Context Map. For concepts, the map adds entities found by
+     the sources (`cxMapAdd`).
+  3. Live sources: the fan-out grid for concepts, or a per-source summary for other searches.
+  4. Everything else.
+- Every module reflects a free-text concept with its own slice of the fan-out (`CX_MODULES`). The rail
+  and the Overview module counts include those records.
 - Per-module search (`MOD_SEARCH` in `10-mod-a.js`, `SUBMITS['mod-search']` in `14-app.js`): every data
   module has its own search box with its own term (memory only, cleared by Clear Session).
   - It runs the full live search and prefers the module's entity types in order (for example Drug

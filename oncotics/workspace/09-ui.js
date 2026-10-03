@@ -93,6 +93,7 @@ function renderRail() {
   var moreOpen = !!ui('_rail').more || RAIL_PRIMARY.indexOf(State.module) < 0;
   var item = function (m) {
     var n = null; try { n = m.count ? m.count() : null; } catch (e) { n = null; }
+    var cn = cxModuleCount(m.id); if (cn != null && cn > (typeof n === 'number' ? n : 0)) n = cn;   // free-text concept: records from this module's live sources
     var sel = State.module === m.id;
     return H`<li role="presentation"><button type="button" role="tab" class="ow-tab" id="ow-tab-${m.id}" aria-selected="${sel ? 'true' : 'false'}" aria-controls="ow-main" tabindex="${sel ? '0' : '-1'}" data-act="tab" data-mod="${m.id}">${icon(m.icon)}<span>${m.label}</span>${n != null ? H`<span class="ow-count" aria-label="${num(n)} records">${n > 999 ? '999+' : n}</span>` : ''}</button></li>`;
   };

@@ -29,7 +29,9 @@ function candidateCard(c, I, isTop) {
 }
 function interpretationPanel() {
   var I = liveInterpretation(); if (!I) return '';
-  var top = I.candidates[0], rest = I.candidates.slice(1).filter(function (c) { return c.score >= 15 || I.candidates.length <= 3; });
+  // The applied interpretation (or the highest-scoring one) first; every other interpretation follows by score.
+  var applied = State.ctx ? I.candidates.find(function (x) { return x.key === I.selectedKey; }) : null;
+  var top = applied || I.candidates[0], rest = I.candidates.filter(function (x) { return x !== top; }).sort(function (a, b) { return b.score - a.score; });
   var c = State.ctx;
   var norm = [];
   if (c) {
@@ -45,6 +47,8 @@ function interpretationPanel() {
     ${I.needsConfirm ? H`<div class="ow-notice ow-notice-warn" role="alert" style="margin-top:8px">${icon('alert')}<div><strong>${I.ambiguous ? 'Ambiguous query.' : 'Low-confidence interpretation.'}</strong> ${I.ambiguous ? 'Two or more interpretations score within 10 points of each other.' : 'No interpretation scored 50 or higher.'} Oncotics has not queried any source yet. Choose how to treat the query, refine it, or set the entity type manually.</div></div>` : ''}
     ${c && c.alleleChoices ? H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div><strong>This identifier maps to more than one protein change.</strong> Oncotics does not pick one for you: <span class="ow-row" style="display:inline-flex;margin-top:4px">${c.alleleChoices.map(function (a) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="search-as" data-term="${a}" data-type="variant">${a}</button>`; })}</span></div></div>` : ''}
     ${c && c.derivedVariant ? H`<p class="ow-subtle" style="margin-top:6px">Protein change ${c.variantName} was derived by Oncotics from ${c.type === 'rsid' || c.genomic ? 'MyVariant.info' : 'Ensembl VEP'} (normalized by Oncotics).</p>` : ''}
+    ${allConfidenceTable(I, top)}
+    ${conceptAnalytics()}
     <div class="ow-interp-grid">${candidateCard(top, I, true)}${rest.length ? H`<div class="ow-stack"><div class="ow-subtle" style="font-weight:600">Other interpretations</div>${rest.map(function (x) { return candidateCard(x, I, false); })}</div>` : ''}</div>
     ${norm.length ? H`<p class="ow-small" style="margin-top:10px"><strong>Normalized terms used downstream:</strong> ${norm.join(' · ')}</p>` : ''}
     <details class="ow-details" style="margin-top:8px"><summary>Set the entity type manually</summary><div class="ow-details-body ow-row">${CORRECT_TYPES.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="correct" data-type="${t[0]}">${t[1]}</button>`; })}</div></details>
@@ -55,7 +59,7 @@ function interpHelp() {
   return H`<div class="ow-stack"><p>${SAFETY.interpretation}</p>
     <p>Every query is matched against local patterns (NCT, PMID, DOI, rsID, HGVS, 510(k)/PMA/De Novo, product code, UDI-DI), Oncotics routing dictionaries (genes and aliases, drugs and brands, diseases, vaccines, Onco-Fertility concepts, imaging concepts) and, once records load, live source agreement or conflict (for example MyGene.info exact symbol hits, CIViC evidence, openFDA label matches, ClinicalTrials.gov record lookups).</p>
     ${table([{ label: 'Range', key: 'r' }, { label: 'Label', key: 'l' }, { label: 'Meaning', key: 'm' }], [{ r: '90–100', l: 'Very High', m: 'Exact identifier or strong dictionary match, usually confirmed by a live source' }, { r: '75–89', l: 'High', m: 'Strong match; alternatives remain visible' }, { r: '50–74', l: 'Medium', m: 'Plausible; check the alternatives' }, { r: '25–49', l: 'Low', m: 'Weak; Oncotics asks you to confirm before querying' }, { r: '0–24', l: 'Very Low', m: 'Unlikely' }])}
-    <p>Oncotics never silently applies an interpretation that scores below 50, or one within 10 points of another candidate: it asks you to choose first. Penalties are shown (for example specificity penalties when a long phrase only partly matches a disease name).</p>
+    <p>When two specific interpretations both score at least 50 and are within 10 points of each other, Oncotics asks you to choose first. When no specific reading reaches 50, the query runs as a free-text clinical concept across every live source; each source that returns records adds a live signal, and exact name matches in the sources appear as live-derived alternative readings. Penalties are shown (for example specificity penalties when a long phrase only partly matches a disease name).</p>
     <div class="ow-disclaimer">Dictionaries are routing hints only and are never presented as results.</div></div>`;
 }
 function interpSourcesFor(c) {
@@ -68,6 +72,12 @@ function interpSourcesFor(c) {
   return uniq(m).map(function (id) { return SRC[id]; }).filter(Boolean);
 }
 function moduleCounts() {
+  var rows = moduleCountsBase();
+  // Free-text concept: modules also count the records their live sources returned.
+  if (cxIsConcept()) rows.forEach(function (r) { var cn = cxModuleCount(r[0]); if (cn != null && r[0] !== 'overview' && r[0] !== 'relationships') r[2] = Math.max(typeof r[2] === 'number' ? r[2] : 0, cn); });
+  return rows;
+}
+function moduleCountsBase() {
   var sum = function (keys) { var n = null, any = false; keys.forEach(function (k) { var v = slotTotal(k); if (v != null) { n = (n || 0) + v; any = true; } }); return any ? n : null; };
   var gl = globeLocations().length, G = State.ctx ? buildMolMap() : { nodes: [], edges: [] };
   return [['clinical-evidence', 'Clinical evidence', sum(['civic:evidence', 'civic:assertions'])], ['trials', 'Trials', sum(['trials:list'])], ['drug-intelligence', 'Drug intelligence', sum(['drug:labels', 'drug:approvals'])],
@@ -92,4 +102,15 @@ function cancerTypeCard() {
       return H`<ul>${d.items.slice(0, 6).map(function (x) { return H`<li>${ext(LINK.oncotree(x.code), x.code)} ${x.name} ${badge(x.confidence, x.confidence === 'Exact' ? 'good' : 'outline')} <span class="ow-subtle">${x.tissue || ''}${x.mainType ? ' · ' + x.mainType : ''}</span></li>`; })}</ul>`; } })}</div>
     <div>${sectionHead('NCI GDC projects (open-access aggregate)', ['nci_gdc'])}${slotView('bio:gdcProjects', { skeleton: 1, linkout: [{ url: linkout('nci_gdc', ''), label: 'NCI GDC Data Portal' }], emptyMsg: 'No GDC project names matched this term.', render: function (d) {
       return H`<ul>${d.items.slice(0, 6).map(function (p) { return H`<li>${ext(LINK.gdcProject(p.id), p.id)} ${p.name || ''} <span class="ow-subtle">${p.cases != null ? num(p.cases) + ' cases' : ''}${p.program ? ' · ' + p.program : ''}</span></li>`; })}</ul><p class="ow-subtle">${SAFETY.gdc}</p>`; } })}</div></div></div>`;
+}
+
+// Confidence for every interpretation of the query, in one table (applied first, then by score).
+function allConfidenceTable(I, top) {
+  var list = [top].concat(I.candidates.filter(function (x) { return x !== top; }).sort(function (a, b) { return b.score - a.score; }));
+  return H`<div class="ow-section"><h4>Confidence for every interpretation (${list.length})</h4><div class="ow-table-wrap"><table class="ow-table ow-conf-table"><caption class="ow-sr">Interpretation confidence scores</caption>
+    <thead><tr><th scope="col">Interpretation</th><th scope="col">Reading</th><th scope="col">Confidence</th><th scope="col">Sources</th><th scope="col">Status</th></tr></thead><tbody>${list.map(function (c) {
+      var sel = I.selectedKey === c.key && State.ctx;
+      return H`<tr${sel ? raw(' class="ow-conf-sel"') : ''}><td>${interpTypeBadge(c)}</td><td><strong class="ow-break">${c.normalized}</strong></td><td><div class="ow-conf-cell">${scoreMeter(c)}<span class="ow-score-inline ow-score-${scoreKind(c.score)}">${c.score} · ${c.scoreLabel}</span></div></td>
+        <td class="ow-small">${c.supporting.length ? c.supporting.length + ' supporting' : H`<span class="ow-subtle">—</span>`}${c.conflicting.length ? H` · <span class="ow-bad-t">${c.conflicting.length} conflicting</span>` : ''}</td>
+        <td>${sel ? badge('In use', 'good') : H`<button type="button" class="ow-btn ow-btn-sm" data-act="interp-use" data-key="${c.key}">Use</button>`}</td></tr>`; })}</tbody></table></div></div>`;
 }

@@ -159,3 +159,129 @@ function conceptFanoutPanel() {
     ${los.length ? H`<div class="ow-section"><div class="ow-small"><strong>Also search on official sites</strong> (no browser API):</div><div class="ow-card-foot">${los.map(function (s) { return extBtn(linkout(s.id, c.concept), s.displayName); })}</div></div>` : ''}
     <p class="ow-subtle">Each source answers your exact text with its own search. A match here is a lexical search hit, not an assertion of clinical relevance. Use “Search as …” to re-run the workspace with a specific interpretation.</p></div>`;
 }
+
+/* ---- Fan-out analytics, live-derived readings, per-module panels, map nodes ---- */
+var CX_CAT = [
+  ['Clinical & trials', ['trials', 'civic', 'opentargets', 'gwas']],
+  ['Regulatory & drug vocabularies', ['fda-label', 'fda-events', 'fda-device', 'rxnorm']],
+  ['Genes, variants & proteins', ['mygene', 'myvariant', 'ensembl', 'uniprot', 'string', 'alphafold', 'ebi_proteins', 'pdbe', 'complex']],
+  ['Pathways, GO & interactions', ['reactome', 'quickgo', 'dgidb']],
+  ['Cancer genomics cohorts', ['cbio', 'gdc']],
+  ['Chemistry', ['chembl', 'pubchem']],
+  ['Ontologies', ['ols', 'oncotree']],
+  ['Literature & citations', ['lit', 'openalex', 'crossref', 's2']]
+];
+// Which fan-out rows each module reflects for a free-text concept.
+var CX_MODULES = {
+  'clinical-evidence': ['civic', 'opentargets', 'ols', 'oncotree', 'gwas'],
+  'trials': ['trials'],
+  'drug-intelligence': ['fda-label', 'fda-events', 'rxnorm', 'chembl', 'pubchem', 'dgidb'],
+  'vaccines-cancer-immunization': ['fda-label', 'rxnorm', 'trials'],
+  'device-intelligence': ['fda-device'],
+  'onco-fertility': ['fda-label', 'fda-events', 'trials'],
+  'biology': ['mygene', 'myvariant', 'ensembl', 'uniprot', 'string', 'reactome', 'quickgo', 'complex', 'pdbe', 'alphafold', 'ebi_proteins', 'dgidb', 'cbio', 'gdc', 'gwas'],
+  'literature': ['lit', 'openalex', 'crossref', 's2'],
+  'expert-knowledge': ['civic', 'opentargets', 'ols', 'oncotree'],
+  'relationships': ['opentargets', 'string', 'reactome', 'dgidb', 'quickgo'],
+  'global-coverage': CX_ENTRIES.map(function (e) { return e.id; })
+};
+function cxIsConcept() { return !!(State.ctx && State.ctx.type === 'concept'); }
+function cxData(e) { var s = slot(cxKey(e)); if (s.status !== 'ok' || !s.data) return null; var d = e.summ ? safeSumm(e, s.data) : s.data; return d && !d.empty ? d : null; }
+function safeSumm(e, d) { try { return e.summ(d); } catch (x) { return null; } }
+function cxStats(ids) {
+  var rows = CX_ENTRIES.filter(function (e) { return (!ids || ids.indexOf(e.id) >= 0) && !State.prefs.disabledSources.has(e.src); });
+  var per = rows.map(function (e) { var s = slot(cxKey(e)); return { e: e, status: s.status, d: cxData(e) }; });
+  var bad = { error: 1, unavailable: 1, ratelimited: 1 };
+  return { rows: per, n: per.length, answered: per.filter(function (r) { return r.status !== 'loading' && r.status !== 'idle'; }).length,
+    withRec: per.filter(function (r) { return r.d; }).length, failed: per.filter(function (r) { return bad[r.status]; }).length,
+    pending: per.filter(function (r) { return r.status === 'loading' || (r.status === 'idle' && r.e.from && slot(cxKey(CX_BY_ID[r.e.from])).status === 'loading'); }).length,
+    records: per.reduce(function (a, r) { return a + (r.d ? Number(r.d.total) || 0 : 0); }, 0) };
+}
+function cxModuleCount(mod) {
+  if (!cxIsConcept() || !CX_MODULES[mod] || mod === 'global-coverage') return null;
+  var st = cxStats(CX_MODULES[mod]); return st.answered ? st.records : null;
+}
+
+// Live-derived readings: a source reports an entity whose name equals the query exactly.
+function cxNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function cxDerived() {
+  if (!cxIsConcept()) return {};
+  var q = cxNorm(State.ctx.concept || State.ctx.label), out = {};
+  var add = function (type, src, label) { if (!label) return; var o = out[type] || (out[type] = { type: type, label: String(label), sources: [] }); if (o.sources.indexOf(src) < 0) o.sources.push(src); };
+  var raw = function (key) { var s = slot(key); return s.status === 'ok' && s.data && !s.data.empty ? s.data : null; };
+  var d;
+  if ((d = raw('ont:ols'))) arr(d.items).forEach(function (x) { if (cxNorm(x.label) === q) add('disease', 'EBI OLS', x.label); });
+  if ((d = raw('ont:oncotree'))) arr(d.items).forEach(function (x) { if (cxNorm(x.name) === q) add('disease', 'OncoTree', x.name); });
+  var fan = function (id, src, fn) { var r = raw(cxKey(CX_BY_ID[id])); if (r) arr(r.items).forEach(function (x) { fn(x, src); }); };
+  fan('opentargets', 'Open Targets', function (x, s) { if (x.as && cxNorm(x.title) === q) add(x.as.type, s, x.title); });
+  fan('mygene', 'MyGene.info', function (x, s) { if (cxNorm(x.symbol) === q) add('gene', s, x.symbol); });
+  fan('uniprot', 'UniProt', function (x, s) { if (x.as && cxNorm(x.as.term) === q) add('gene', s, x.as.term); });
+  fan('string', 'STRING', function (x, s) { if (cxNorm(x.title) === q) add('gene', s, x.title); });
+  fan('rxnorm', 'RxNorm', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  fan('chembl', 'ChEMBL', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  fan('fda-label', 'openFDA drug label', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  Object.keys(out).forEach(function (k) { var o = out[k]; o.score = Math.min(92, 45 + 15 * o.sources.length); });
+  return out;
+}
+
+// Concept signals for the confidence box: one per source that answered with records.
+function cxConceptSignals(add) {
+  CX_ENTRIES.forEach(function (e) {
+    if (e.id === 'trials' || e.id === 'lit') return;   // already counted by the base live signals
+    var d = cxData(e), name = SRC[e.src] ? SRC[e.src].displayName : e.src;
+    if (d) add(name + ' returned ' + num(d.total) + ' result' + (d.total === 1 ? '' : 's') + ' (' + e.label.toLowerCase() + ')', 1, name);
+  });
+  var D = cxDerived(); Object.keys(D).forEach(function (k) { add('Exact ' + k + ' name match in ' + D[k].sources.join(', ') + ' (see live-derived reading)', 2, D[k].sources[0]); });
+}
+
+function conceptAnalytics() {
+  if (!cxIsConcept()) return '';
+  var st = cxStats();
+  var perSrc = st.rows.filter(function (r) { return r.d; }).map(function (r) { return [(SRC[r.e.src] ? SRC[r.e.src].displayName : r.e.src) + ' · ' + r.e.label, Number(r.d.total) || 0]; }).sort(function (a, b) { return b[1] - a[1]; });
+  var perCat = CX_CAT.map(function (g) { var rs = st.rows.filter(function (r) { return g[1].indexOf(r.e.id) >= 0; }); return [g[0] + ' (' + rs.filter(function (r) { return r.d; }).length + '/' + rs.length + ')', rs.filter(function (r) { return r.d; }).length]; });
+  var pct = st.n ? Math.round(100 * st.withRec / st.n) : 0;
+  return H`<div class="ow-cx-analytics ow-section"><h4>${icon('graph')} Free-text concept analytics (all live sources)</h4>
+    <div class="ow-stat-grid">${stat(st.n, 'Live sources queried', 'free-text search or cascaded')}${stat(st.answered + (st.pending ? ' (+' + st.pending + ' pending)' : ''), 'Sources answered', 'this search')}${stat(st.withRec, 'Sources with records', pct + '% coverage')}${stat(st.failed, 'Not reachable', 'shown as link-outs')}${stat(num(st.records), 'Records reported', 'sum of source totals')}</div>
+    <div class="ow-grid-2" style="margin-top:10px"><div class="ow-card"><div class="ow-card-title">Sources with records, by category</div>${bars(perCat, { label: 'Sources with records by category', color: 'var(--ow-teal)' })}</div>
+    <div class="ow-card"><div class="ow-card-title">Records reported per source</div>${perSrc.length ? bars(perSrc.slice(0, 12), { label: 'Records reported per source', color: 'var(--ow-lit)' }) : H`<p class="ow-subtle">${st.pending ? 'Waiting for sources…' : 'No source returned records.'}</p>`}</div></div>
+    <p class="ow-subtle">Counts are each source's own total for your exact text (lexical search hits), not clinical relevance. Sources use different search engines, so counts are not comparable across sources.</p></div>`;
+}
+
+function conceptModulePanel(mod) {
+  if (!cxIsConcept() || !CX_MODULES[mod]) return '';
+  var ids = CX_MODULES[mod], st = cxStats(ids), c = State.ctx;
+  if (mod === 'global-coverage') return H`<div class="ow-card ow-cx-card ow-section"><div class="ow-card-title">${icon('search')} “${c.concept}” coverage across all live sources</div>${table([{ label: 'Source', render: function (r) { return SRC[r.e.src] ? SRC[r.e.src].displayName : r.e.src; } }, { label: 'Search', render: function (r) { return r.e.label; } }, { label: 'Status', render: function (r) { return r.d ? badge(num(r.d.total) + ' records', 'good') : badge(r.status === 'empty' || r.status === 'ok' ? 'no records' : r.status === 'loading' ? 'loading' : r.status === 'idle' ? 'not applicable' : 'not reachable', r.status === 'error' || r.status === 'unavailable' || r.status === 'ratelimited' ? 'warn' : 'outline'); } }, { label: 'Official source', render: function (r) { var u = linkout(r.e.src, r.e.from ? '' : c.concept); return u ? ext(u, 'Open') : '—'; } }], st.rows)}</div>`;
+  var rows = CX_ENTRIES.filter(function (e) { return ids.indexOf(e.id) >= 0 && !State.prefs.disabledSources.has(e.src); });
+  return H`<section class="ow-card ow-cx-card ow-section" aria-label="Free-text concept results for this module"><div class="ow-card-head"><div><div class="ow-card-title">${icon('search')} Free-text concept “${c.concept}” in ${modMeta(mod).label}</div>
+    <div class="ow-card-sub">${st.withRec} of ${st.n} relevant live sources returned records (${num(st.records)} reported). Use “Search as …” to open a specific reading in this module.</div></div></div>
+    <ul class="ow-cx-grid">${rows.map(cxRow)}</ul></section>`;
+}
+
+// Live sources summary for every search (per source: requests, status, records).
+function liveSourcesPanel() {
+  var by = new Map();
+  State.slots.forEach(function (s, k) { if (!s.src || !SRC[s.src]) return; var o = by.get(s.src) || { ok: 0, empty: 0, bad: 0, loading: 0, n: 0, recs: 0 }; o.n++; if (s.status === 'ok') { o.ok++; var t = s.data && (s.data.total != null ? Number(s.data.total) : arr(s.data.items).length); o.recs += t || 0; } else if (s.status === 'empty') o.empty++; else if (s.status === 'loading') o.loading++; else if (s.status !== 'idle') o.bad++; by.set(s.src, o); });
+  var list = Array.from(by.entries()).sort(function (a, b) { return b[1].recs - a[1].recs; });
+  if (!list.length) return '';
+  return H`<div class="ow-card ow-section"><div class="ow-card-title">${icon('flow')} Live sources for this search</div><p class="ow-card-sub">${list.length} public sources were queried directly from your browser. Failed sources show their official link-out in each section.</p>
+    <ul class="ow-cx-grid">${list.map(function (x) { var s = SRC[x[0]], o = x[1], lo = linkout(x[0], State.ctx ? State.ctx.label : ''); return H`<li class="ow-cx-row" data-status="${o.ok ? 'ok' : o.bad ? 'error' : o.loading ? 'loading' : 'empty'}"><div class="ow-cx-head"><strong>${s.displayName}</strong> <span class="ow-subtle">${s.kind || ''}</span></div>
+      <div class="ow-small">${o.ok ? badge(num(o.recs) + ' records', 'good') : ''} ${o.loading ? badge('loading', 'outline') : ''} ${o.empty ? badge(o.empty + ' empty', 'outline') : ''} ${o.bad ? badge(o.bad + ' not reachable', 'warn') : ''} <span class="ow-subtle">${o.n} request${o.n === 1 ? '' : 's'}</span></div>${lo ? H`<a class="ow-linkbtn ow-small" href="${lo}" target="_blank" rel="noopener noreferrer">Open ${s.displayName}<span class="ow-sr"> (opens in a new tab)</span></a>` : ''}</li>`; })}</ul></div>`;
+}
+
+// Molecular Context Map nodes for a free-text concept (search matches → derived edges).
+function cxMapAdd(N, E, center) {
+  if (!cxIsConcept()) return;
+  var raw = function (id) { var e = CX_BY_ID[id], s = slot(cxKey(e)); return s.status === 'ok' && s.data && !s.data.empty ? arr(s.data.items) : []; };
+  var link = function (node, src) { E(center, node, 'search match (' + (SRC[src] ? SRC[src].displayName : src) + ')', src, 'molecular-context-derived-edge', 'Possible'); };
+  raw('mygene').slice(0, 3).forEach(function (x) { link(N('g:' + x.symbol, 'gene', x.symbol, { relevance: 45, source: 'mygene', url: x.url }), 'mygene'); });
+  raw('uniprot').slice(0, 2).forEach(function (x) { link(N('p:' + x.acc, 'protein', x.acc + ' · ' + trunc(x.title, 24), { relevance: 40, source: 'uniprot', url: x.url }), 'uniprot'); });
+  var drugs = new Set();
+  ['chembl', 'rxnorm', 'fda-label'].forEach(function (id) { raw(id).slice(0, 3).forEach(function (x) { var k = String(x.as ? x.as.term : x.title).toLowerCase(); if (drugs.has(k) || drugs.size >= 5) return; drugs.add(k); link(N('d:' + k, 'drug', titleCase(k), { relevance: 42, source: CX_BY_ID[id].src, url: x.url }), CX_BY_ID[id].src); }); });
+  var s1 = slot('ont:ols'); if (s1.status === 'ok') arr(s1.data.items).slice(0, 2).forEach(function (x) { link(N('dz:' + String(x.label).toLowerCase(), 'disease', x.label, { relevance: 44, source: 'ols', url: safeUrl(x.iri), category: 'ontology-normalized' }), 'ols'); });
+  var s2 = slot('ont:oncotree'); if (s2.status === 'ok') arr(s2.data.items).slice(0, 2).forEach(function (x) { link(N('dz:' + String(x.name).toLowerCase(), 'disease', x.name, { relevance: 44, source: 'oncotree', url: LINK.oncotree(x.code), category: 'ontology-normalized' }), 'oncotree'); });
+  raw('opentargets').slice(0, 4).forEach(function (x) { if (!x.as) return; var t = x.as.type, pre = t === 'gene' ? 'g:' : t === 'drug' ? 'd:' : 'dz:'; link(N(pre + (t === 'gene' ? x.title : String(x.title).toLowerCase()), t, x.title, { relevance: 43, source: 'opentargets', url: x.url }), 'opentargets'); });
+  raw('reactome').slice(0, 3).forEach(function (x) { link(N('pw:' + x.sub, 'pathway', trunc(x.title, 34), { relevance: 30, source: 'reactome', url: x.url }), 'reactome'); });
+  raw('quickgo').slice(0, 2).forEach(function (x) { link(N('go:' + x.sub, 'pathway', 'GO: ' + trunc(x.title, 30), { relevance: 26, source: 'quickgo', url: x.url }), 'quickgo'); });
+  raw('fda-device').slice(0, 2).forEach(function (x) { link(N('dx:' + (x.key || x.title), 'device', trunc(x.title, 30), { relevance: 28, source: 'openfda-device', url: x.url, recordKey: x.key }), 'openfda-device'); });
+  raw('dgidb').slice(0, 3).forEach(function (x) { if (!x.as) return; var gn = String(x.title).split(' → ')[1]; var dn = String(x.as.term).toLowerCase(); E(N('g:' + gn, 'gene', gn, { relevance: 40, source: 'dgidb' }), N('d:' + dn, 'drug', titleCase(dn), { relevance: 38, source: 'dgidb', url: x.url }), 'interacts with (DGIdb)', 'dgidb', 'molecular-context-source-reported', 'Likely'); });
+}

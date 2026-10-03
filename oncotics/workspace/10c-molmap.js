@@ -82,6 +82,7 @@ function buildMolMap() {
     arr(v.cancers).slice(0, 4).forEach(function (dz) { E(center, N('dz:' + dz.toLowerCase(), 'disease', dz, { relevance: 45, source: 'oncotics-dictionary', category: 'ontology-normalized', confidence: 'Likely' }), v.kind === 'preventive' ? 'prevention context' : 'studied context', 'Oncotics vaccine dictionary', 'ontology-normalized', 'Likely'); });
     var vl = ok('vax:labels'); if (vl) { var v0 = vl.items[0]; E(center, N('lb:' + (v0.data.setId || v0.key), 'label', 'FDA label: ' + trunc(v0.title, 26), { relevance: 50, source: 'openfda-drug', recordKey: v0.key, url: v0.prov.url, confidence: v0.data.confidence }), 'has label', 'openfda-drug', 'molecular-context-source-reported', v0.data.confidence); }
   }
+  cxMapAdd(N, E, center);   // free-text concept: entities found by the live sources
   // Trials and literature (search matches → derived "linked to"/"mentioned in")
   var tr = ok('trials:list');
   if (tr) tr.items.slice(0, 4).forEach(function (r) {

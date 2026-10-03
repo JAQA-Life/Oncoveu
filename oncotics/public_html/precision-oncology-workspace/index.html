@@ -596,6 +596,15 @@ main.oncotics-workspace .ow-skip:not(:focus){top:-160px}
 .oncotics-workspace .ow-cx-list { margin: 4px 0 0; padding-left: 18px; font-size: .86rem; overflow-wrap: anywhere; }
 .oncotics-workspace .ow-cx-list li { margin: 2px 0; }
 @media (max-width: 600px) { .oncotics-workspace .ow-cx-grid { grid-template-columns: minmax(0, 1fr); } .oncotics-workspace .ow-modsearch label { white-space: normal; } }
+
+.oncotics-workspace .ow-ov-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 1.05rem; }
+.oncotics-workspace .ow-ov-h svg { width: 18px; height: 18px; }
+.oncotics-workspace .ow-conf-table td { vertical-align: middle; }
+.oncotics-workspace .ow-conf-sel { background: var(--ow-teal-soft); }
+.oncotics-workspace .ow-conf-cell { display: flex; align-items: center; gap: 8px; min-width: 170px; }
+.oncotics-workspace .ow-conf-cell .ow-meter { flex: 1 1 90px; }
+.oncotics-workspace .ow-score-inline { font-weight: 700; font-size: .85rem; white-space: nowrap; }
+.oncotics-workspace .ow-cx-analytics h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
 </style>
 <main id="oncotics-precision-workspace" class="oncotics-workspace" aria-label="Oncotics Precision Oncology Workspace">
   <a class="ow-skip" href="#ow-main">Skip to workspace</a>
@@ -2125,16 +2134,28 @@ function liveSignals(c) {
   if (t === 'device') { var au = ok('dev:auth'); if (au) add('openFDA device authorization record found (may lag official DB)', 8, 'openFDA device'); else if (empty('dev:auth')) add('openFDA returned no authorization record (records may lag the official FDA database)', -12, 'openFDA device'); }
   if ((t === 'vaccine' || t === 'fertility' || t === 'imaging' || t === 'concept' || t === 'drugctx') && tr) add('ClinicalTrials.gov returned ' + num(tr.total) + ' related studies', tr.total ? 1 : 0, 'ClinicalTrials.gov');
   if ((t === 'vaccine' || t === 'fertility' || t === 'imaging' || t === 'concept') && lit) add('Europe PMC returned ' + num(lit.total) + ' records', lit.total ? 1 : 0, 'Europe PMC');
+  if (t === 'concept') cxConceptSignals(add);   // free-text concept: every live source that answered
   return { signals: out, supporting: uniq(sup), conflicting: uniq(con) };
 }
 function liveInterpretation() {
   var I = State.interp; if (!I) return null;
   var sel = State.entity && State.ctx ? I.selectedKey : null;
+  // Free-text concepts: readings suggested by exact name matches in the live sources (rebuilt each render).
+  var D = cxDerived();
+  I.candidates = I.candidates.filter(function (c) { return !c.derivedType; });
   I.candidates.forEach(function (c) {
-    var L = c.key === sel || (!sel && c === I.top) ? liveSignals(c) : { signals: [], supporting: [], conflicting: [] };
+    var dv = c.key !== sel && D[c.type];
+    var L = c.key === sel || (!sel && c === I.top) ? liveSignals(c) : dv ? { signals: [sig('Exact name match in ' + dv.sources.join(', '), 'live', Math.max(0, dv.score - c.base), dv.sources[0])], supporting: dv.sources.slice(), conflicting: [] } : { signals: [], supporting: [], conflicting: [] };
+    if (dv) dv.used = true;
     c.liveSignals = L.signals; c.supporting = L.supporting; c.conflicting = L.conflicting;
     var delta = L.signals.reduce(function (a, x) { return a + x.delta; }, 0);
     c.score = Math.max(0, Math.min(99, Math.round(c.base + delta))); c.scoreLabel = scoreLabel(c.score);
+  });
+  Object.keys(D).forEach(function (k) {
+    var o = D[k]; if (o.used) return;
+    var dc = mkCand(k, 'live-derived', o.label, o.score, 'Live sources report an entity with exactly this name: ' + o.sources.join(', ') + '. Choose it to re-run the workspace as a ' + k + '.', [sig('Exact ' + k + ' name match in ' + o.sources.join(', '), 'live', 0, o.sources[0])], null);
+    dc.key = 'live:' + k; dc.derivedType = k; dc.score = o.score; dc.scoreLabel = scoreLabel(o.score); dc.supporting = o.sources.slice(); dc.flags.push('Live-derived from source search results');
+    I.candidates.push(dc);
   });
   // Label-mentioned target genes (live-derived alternative for drug queries).
   var lb = slot('drug:labels');
@@ -3190,6 +3211,7 @@ function renderRail() {
   var moreOpen = !!ui('_rail').more || RAIL_PRIMARY.indexOf(State.module) < 0;
   var item = function (m) {
     var n = null; try { n = m.count ? m.count() : null; } catch (e) { n = null; }
+    var cn = cxModuleCount(m.id); if (cn != null && cn > (typeof n === 'number' ? n : 0)) n = cn;   // free-text concept: records from this module's live sources
     var sel = State.module === m.id;
     return H`<li role="presentation"><button type="button" role="tab" class="ow-tab" id="ow-tab-${m.id}" aria-selected="${sel ? 'true' : 'false'}" aria-controls="ow-main" tabindex="${sel ? '0' : '-1'}" data-act="tab" data-mod="${m.id}">${icon(m.icon)}<span>${m.label}</span>${n != null ? H`<span class="ow-count" aria-label="${num(n)} records">${n > 999 ? '999+' : n}</span>` : ''}</button></li>`;
   };
@@ -3498,7 +3520,7 @@ function moduleSearch(id) {
 }
 function moduleHead(id, extra) {
   var m = modMeta(id);
-  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}`;
+  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}${id !== 'overview' ? safeRender(function () { return conceptModulePanel(id); }, 'Free-text concept results') : ''}`;
 }
 function slotTotal(key, field) { var s = slot(key); if (s.status === 'ok' && s.data) return field ? get(s.data, field) : (s.data.total != null ? s.data.total : arr(s.data.items).length); if (s.status === 'empty') return 0; return null; }
 function slotMark(key) { var s = slot(key); return { idle: 'not loaded', loading: 'loading…', error: 'failed', unavailable: 'unavailable', ratelimited: 'rate-limited' }[s.status] || null; }
@@ -3666,7 +3688,8 @@ registerModule({
     var used = uniq(Array.from(State.slots.values()).map(function (s) { return s.src; }).filter(Boolean));
     return H`${moduleHead('overview', H`<button type="button" class="ow-btn ow-btn-sm" data-act="export-json">${icon('download')}Export overview</button><button type="button" class="ow-btn ow-btn-sm" data-act="print">${icon('print')}Print</button>`)}
       ${interpretationPanel()}
-      ${conceptFanoutPanel()}
+      <div class="ow-section"><h3 class="ow-ov-h">${icon('globe')} Geography and molecular context</h3><div class="ow-ov-visuals">${safeRender(globePanel, 'Geographic Activity Globe')}${safeRender(molMapPanel, 'Molecular Context Map')}</div></div>
+      <div class="ow-section"><h3 class="ow-ov-h">${icon('flow')} Live sources</h3>${c.type === 'concept' ? conceptFanoutPanel() : liveSourcesPanel()}</div>
       ${imagingContextCard()}
       ${cancerTypeCard()}
       ${partialFailure() ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div><strong>Partial results.</strong> Some sources could not be loaded. Other sources are still shown. <button type="button" class="ow-linkbtn" data-act="retry">Retry failed requests</button></div></div>` : ''}
@@ -3674,7 +3697,6 @@ registerModule({
       <div class="ow-section">${conflictPanel()}</div>
       <div class="ow-section"><h3 style="margin-bottom:8px">Records by source</h3><div class="ow-stat-grid">${stats}</div></div>
       <div class="ow-section"><h3 style="margin-bottom:8px">Counts by module</h3><div class="ow-modcounts">${moduleCounts().map(function (m) { var mm = MOD[m[0]] ? modMeta(m[0]) : null; return H`<button type="button" class="ow-modcount" data-act="tab" data-mod="${m[0]}"><span class="ow-modcount-n">${m[2] == null ? '—' : (typeof m[2] === 'number' ? num(m[2]) : m[2])}</span><span class="ow-modcount-l">${mm ? icon(mm.icon) : ''}${m[1]}</span></button>`; })}</div><p class="ow-subtle" style="margin-top:4px">“—” means not loaded yet; deeper modules load when you open them.</p></div>
-      <div class="ow-section ow-ov-visuals">${safeRender(globePanel, 'Geographic Activity Globe')}${safeRender(molMapPanel, 'Molecular Context Map')}</div>
       ${tops.length ? H`<div class="ow-section"><h3 style="margin-bottom:8px">Top matches</h3><div class="ow-grid">${tops.map(function (t) {
         var r = t[1];
         return H`<div class="ow-card"><div class="ow-subtle">${t[0]}</div><div class="ow-card-title" style="margin-top:4px">${r.key ? H`<button type="button" class="ow-linkbtn" data-act="open-rec" data-key="${r.key}">${trunc(r.title, 140)}</button>` : r.title}</div>${r.term ? H`<div class="ow-card-foot"><button type="button" class="ow-btn ow-btn-sm" data-act="search-as" data-term="${r.term}" data-type="${r.asType}">Explore ${r.asType}</button></div>` : ''}</div>`;
@@ -4350,7 +4372,7 @@ function globePanel() {
     ${legend}
     ${GlobeState.view === 'globe' ? H`<div class="ow-globe-wrap"><div id="ow-globe-mount" class="ow-globe-mount"></div><div class="ow-globe-hint">${engineNote} · drag to rotate · scroll or +/− to zoom · select a marker for details</div></div>` : listView}
     ${GlobeState.view === 'globe' ? det('globe-list', H`${icon('table')} Accessible location list (${clusters.length} clusters, ${num(locs.reduce(function (a, l) { return a + l.count; }, 0))} records)`, listView, false) : ''}
-    <div class="ow-row" style="margin-top:8px">${hasSitesBtn && slot('trials:sites').status === 'idle' ? autoAct('trials:sites', 'trial-sites', {}, [], 'site-level trial locations (ClinicalTrials.gov)') : ''}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? autoAct('lit:institutions', 'lit-institutions', {}, [], 'literature institution countries (OpenAlex)') : ''}${slotView('trials:sites', { skeleton: false })}${slotView('lit:institutions', { skeleton: false })}${imagery}</div>
+    <div class="ow-row" style="margin-top:8px">${hasSitesBtn && slot('trials:sites').status === 'idle' ? autoAct('trials:sites', 'trial-sites', {}, [], 'site-level trial locations (ClinicalTrials.gov)') : ''}${slot('lit:list').status === 'ok' && slot('lit:institutions').status === 'idle' ? autoAct('lit:institutions', 'lit-institutions', {}, [], 'literature institution countries (OpenAlex)') : ''}${slotView('trials:sites', { skeleton: false, render: function (d) { return H`<span class="ow-subtle ow-small">Site-level locations loaded for ${num(arr(d.items).length)} trials (ClinicalTrials.gov).</span>`; } })}${slotView('lit:institutions', { skeleton: false, render: function (d) { return H`<span class="ow-subtle ow-small">Institution countries loaded for ${num(arr(d.items).length)} papers (OpenAlex).</span>`; } })}${imagery}</div>
     ${GlobeState.filter ? H`<div class="ow-notice ow-notice-info" style="margin-top:8px">${icon('filter')}<div>In-memory filter active: <strong>${GlobeState.filter.label}</strong> (${GlobeState.filter.keys.length} records). Trials and recalls lists show matching records first. <button type="button" class="ow-linkbtn" data-act="globe-unfilter">Remove filter</button></div></div>` : ''}
     ${privacy}<p class="ow-subtle" style="margin-top:6px">${SAFETY.globe} Marker size reflects record count only and does not imply clinical importance. State- and country-level markers are placed at approximate centroids.</p></div>`;
 }
@@ -4455,6 +4477,7 @@ function buildMolMap() {
     arr(v.cancers).slice(0, 4).forEach(function (dz) { E(center, N('dz:' + dz.toLowerCase(), 'disease', dz, { relevance: 45, source: 'oncotics-dictionary', category: 'ontology-normalized', confidence: 'Likely' }), v.kind === 'preventive' ? 'prevention context' : 'studied context', 'Oncotics vaccine dictionary', 'ontology-normalized', 'Likely'); });
     var vl = ok('vax:labels'); if (vl) { var v0 = vl.items[0]; E(center, N('lb:' + (v0.data.setId || v0.key), 'label', 'FDA label: ' + trunc(v0.title, 26), { relevance: 50, source: 'openfda-drug', recordKey: v0.key, url: v0.prov.url, confidence: v0.data.confidence }), 'has label', 'openfda-drug', 'molecular-context-source-reported', v0.data.confidence); }
   }
+  cxMapAdd(N, E, center);   // free-text concept: entities found by the live sources
   // Trials and literature (search matches → derived "linked to"/"mentioned in")
   var tr = ok('trials:list');
   if (tr) tr.items.slice(0, 4).forEach(function (r) {
@@ -4586,7 +4609,9 @@ function candidateCard(c, I, isTop) {
 }
 function interpretationPanel() {
   var I = liveInterpretation(); if (!I) return '';
-  var top = I.candidates[0], rest = I.candidates.slice(1).filter(function (c) { return c.score >= 15 || I.candidates.length <= 3; });
+  // The applied interpretation (or the highest-scoring one) first; every other interpretation follows by score.
+  var applied = State.ctx ? I.candidates.find(function (x) { return x.key === I.selectedKey; }) : null;
+  var top = applied || I.candidates[0], rest = I.candidates.filter(function (x) { return x !== top; }).sort(function (a, b) { return b.score - a.score; });
   var c = State.ctx;
   var norm = [];
   if (c) {
@@ -4602,6 +4627,8 @@ function interpretationPanel() {
     ${I.needsConfirm ? H`<div class="ow-notice ow-notice-warn" role="alert" style="margin-top:8px">${icon('alert')}<div><strong>${I.ambiguous ? 'Ambiguous query.' : 'Low-confidence interpretation.'}</strong> ${I.ambiguous ? 'Two or more interpretations score within 10 points of each other.' : 'No interpretation scored 50 or higher.'} Oncotics has not queried any source yet. Choose how to treat the query, refine it, or set the entity type manually.</div></div>` : ''}
     ${c && c.alleleChoices ? H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div><strong>This identifier maps to more than one protein change.</strong> Oncotics does not pick one for you: <span class="ow-row" style="display:inline-flex;margin-top:4px">${c.alleleChoices.map(function (a) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="search-as" data-term="${a}" data-type="variant">${a}</button>`; })}</span></div></div>` : ''}
     ${c && c.derivedVariant ? H`<p class="ow-subtle" style="margin-top:6px">Protein change ${c.variantName} was derived by Oncotics from ${c.type === 'rsid' || c.genomic ? 'MyVariant.info' : 'Ensembl VEP'} (normalized by Oncotics).</p>` : ''}
+    ${allConfidenceTable(I, top)}
+    ${conceptAnalytics()}
     <div class="ow-interp-grid">${candidateCard(top, I, true)}${rest.length ? H`<div class="ow-stack"><div class="ow-subtle" style="font-weight:600">Other interpretations</div>${rest.map(function (x) { return candidateCard(x, I, false); })}</div>` : ''}</div>
     ${norm.length ? H`<p class="ow-small" style="margin-top:10px"><strong>Normalized terms used downstream:</strong> ${norm.join(' · ')}</p>` : ''}
     <details class="ow-details" style="margin-top:8px"><summary>Set the entity type manually</summary><div class="ow-details-body ow-row">${CORRECT_TYPES.map(function (t) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="correct" data-type="${t[0]}">${t[1]}</button>`; })}</div></details>
@@ -4612,7 +4639,7 @@ function interpHelp() {
   return H`<div class="ow-stack"><p>${SAFETY.interpretation}</p>
     <p>Every query is matched against local patterns (NCT, PMID, DOI, rsID, HGVS, 510(k)/PMA/De Novo, product code, UDI-DI), Oncotics routing dictionaries (genes and aliases, drugs and brands, diseases, vaccines, Onco-Fertility concepts, imaging concepts) and, once records load, live source agreement or conflict (for example MyGene.info exact symbol hits, CIViC evidence, openFDA label matches, ClinicalTrials.gov record lookups).</p>
     ${table([{ label: 'Range', key: 'r' }, { label: 'Label', key: 'l' }, { label: 'Meaning', key: 'm' }], [{ r: '90–100', l: 'Very High', m: 'Exact identifier or strong dictionary match, usually confirmed by a live source' }, { r: '75–89', l: 'High', m: 'Strong match; alternatives remain visible' }, { r: '50–74', l: 'Medium', m: 'Plausible; check the alternatives' }, { r: '25–49', l: 'Low', m: 'Weak; Oncotics asks you to confirm before querying' }, { r: '0–24', l: 'Very Low', m: 'Unlikely' }])}
-    <p>Oncotics never silently applies an interpretation that scores below 50, or one within 10 points of another candidate: it asks you to choose first. Penalties are shown (for example specificity penalties when a long phrase only partly matches a disease name).</p>
+    <p>When two specific interpretations both score at least 50 and are within 10 points of each other, Oncotics asks you to choose first. When no specific reading reaches 50, the query runs as a free-text clinical concept across every live source; each source that returns records adds a live signal, and exact name matches in the sources appear as live-derived alternative readings. Penalties are shown (for example specificity penalties when a long phrase only partly matches a disease name).</p>
     <div class="ow-disclaimer">Dictionaries are routing hints only and are never presented as results.</div></div>`;
 }
 function interpSourcesFor(c) {
@@ -4625,6 +4652,12 @@ function interpSourcesFor(c) {
   return uniq(m).map(function (id) { return SRC[id]; }).filter(Boolean);
 }
 function moduleCounts() {
+  var rows = moduleCountsBase();
+  // Free-text concept: modules also count the records their live sources returned.
+  if (cxIsConcept()) rows.forEach(function (r) { var cn = cxModuleCount(r[0]); if (cn != null && r[0] !== 'overview' && r[0] !== 'relationships') r[2] = Math.max(typeof r[2] === 'number' ? r[2] : 0, cn); });
+  return rows;
+}
+function moduleCountsBase() {
   var sum = function (keys) { var n = null, any = false; keys.forEach(function (k) { var v = slotTotal(k); if (v != null) { n = (n || 0) + v; any = true; } }); return any ? n : null; };
   var gl = globeLocations().length, G = State.ctx ? buildMolMap() : { nodes: [], edges: [] };
   return [['clinical-evidence', 'Clinical evidence', sum(['civic:evidence', 'civic:assertions'])], ['trials', 'Trials', sum(['trials:list'])], ['drug-intelligence', 'Drug intelligence', sum(['drug:labels', 'drug:approvals'])],
@@ -4649,6 +4682,17 @@ function cancerTypeCard() {
       return H`<ul>${d.items.slice(0, 6).map(function (x) { return H`<li>${ext(LINK.oncotree(x.code), x.code)} ${x.name} ${badge(x.confidence, x.confidence === 'Exact' ? 'good' : 'outline')} <span class="ow-subtle">${x.tissue || ''}${x.mainType ? ' · ' + x.mainType : ''}</span></li>`; })}</ul>`; } })}</div>
     <div>${sectionHead('NCI GDC projects (open-access aggregate)', ['nci_gdc'])}${slotView('bio:gdcProjects', { skeleton: 1, linkout: [{ url: linkout('nci_gdc', ''), label: 'NCI GDC Data Portal' }], emptyMsg: 'No GDC project names matched this term.', render: function (d) {
       return H`<ul>${d.items.slice(0, 6).map(function (p) { return H`<li>${ext(LINK.gdcProject(p.id), p.id)} ${p.name || ''} <span class="ow-subtle">${p.cases != null ? num(p.cases) + ' cases' : ''}${p.program ? ' · ' + p.program : ''}</span></li>`; })}</ul><p class="ow-subtle">${SAFETY.gdc}</p>`; } })}</div></div></div>`;
+}
+
+// Confidence for every interpretation of the query, in one table (applied first, then by score).
+function allConfidenceTable(I, top) {
+  var list = [top].concat(I.candidates.filter(function (x) { return x !== top; }).sort(function (a, b) { return b.score - a.score; }));
+  return H`<div class="ow-section"><h4>Confidence for every interpretation (${list.length})</h4><div class="ow-table-wrap"><table class="ow-table ow-conf-table"><caption class="ow-sr">Interpretation confidence scores</caption>
+    <thead><tr><th scope="col">Interpretation</th><th scope="col">Reading</th><th scope="col">Confidence</th><th scope="col">Sources</th><th scope="col">Status</th></tr></thead><tbody>${list.map(function (c) {
+      var sel = I.selectedKey === c.key && State.ctx;
+      return H`<tr${sel ? raw(' class="ow-conf-sel"') : ''}><td>${interpTypeBadge(c)}</td><td><strong class="ow-break">${c.normalized}</strong></td><td><div class="ow-conf-cell">${scoreMeter(c)}<span class="ow-score-inline ow-score-${scoreKind(c.score)}">${c.score} · ${c.scoreLabel}</span></div></td>
+        <td class="ow-small">${c.supporting.length ? c.supporting.length + ' supporting' : H`<span class="ow-subtle">—</span>`}${c.conflicting.length ? H` · <span class="ow-bad-t">${c.conflicting.length} conflicting</span>` : ''}</td>
+        <td>${sel ? badge('In use', 'good') : H`<button type="button" class="ow-btn ow-btn-sm" data-act="interp-use" data-key="${c.key}">Use</button>`}</td></tr>`; })}</tbody></table></div></div>`;
 }
 /* ====================================================================
    FREE-TEXT CONCEPT FAN-OUT
@@ -4810,6 +4854,132 @@ function conceptFanoutPanel() {
     <ul class="ow-cx-grid">${rows.map(cxRow)}</ul>
     ${los.length ? H`<div class="ow-section"><div class="ow-small"><strong>Also search on official sites</strong> (no browser API):</div><div class="ow-card-foot">${los.map(function (s) { return extBtn(linkout(s.id, c.concept), s.displayName); })}</div></div>` : ''}
     <p class="ow-subtle">Each source answers your exact text with its own search. A match here is a lexical search hit, not an assertion of clinical relevance. Use “Search as …” to re-run the workspace with a specific interpretation.</p></div>`;
+}
+
+/* ---- Fan-out analytics, live-derived readings, per-module panels, map nodes ---- */
+var CX_CAT = [
+  ['Clinical & trials', ['trials', 'civic', 'opentargets', 'gwas']],
+  ['Regulatory & drug vocabularies', ['fda-label', 'fda-events', 'fda-device', 'rxnorm']],
+  ['Genes, variants & proteins', ['mygene', 'myvariant', 'ensembl', 'uniprot', 'string', 'alphafold', 'ebi_proteins', 'pdbe', 'complex']],
+  ['Pathways, GO & interactions', ['reactome', 'quickgo', 'dgidb']],
+  ['Cancer genomics cohorts', ['cbio', 'gdc']],
+  ['Chemistry', ['chembl', 'pubchem']],
+  ['Ontologies', ['ols', 'oncotree']],
+  ['Literature & citations', ['lit', 'openalex', 'crossref', 's2']]
+];
+// Which fan-out rows each module reflects for a free-text concept.
+var CX_MODULES = {
+  'clinical-evidence': ['civic', 'opentargets', 'ols', 'oncotree', 'gwas'],
+  'trials': ['trials'],
+  'drug-intelligence': ['fda-label', 'fda-events', 'rxnorm', 'chembl', 'pubchem', 'dgidb'],
+  'vaccines-cancer-immunization': ['fda-label', 'rxnorm', 'trials'],
+  'device-intelligence': ['fda-device'],
+  'onco-fertility': ['fda-label', 'fda-events', 'trials'],
+  'biology': ['mygene', 'myvariant', 'ensembl', 'uniprot', 'string', 'reactome', 'quickgo', 'complex', 'pdbe', 'alphafold', 'ebi_proteins', 'dgidb', 'cbio', 'gdc', 'gwas'],
+  'literature': ['lit', 'openalex', 'crossref', 's2'],
+  'expert-knowledge': ['civic', 'opentargets', 'ols', 'oncotree'],
+  'relationships': ['opentargets', 'string', 'reactome', 'dgidb', 'quickgo'],
+  'global-coverage': CX_ENTRIES.map(function (e) { return e.id; })
+};
+function cxIsConcept() { return !!(State.ctx && State.ctx.type === 'concept'); }
+function cxData(e) { var s = slot(cxKey(e)); if (s.status !== 'ok' || !s.data) return null; var d = e.summ ? safeSumm(e, s.data) : s.data; return d && !d.empty ? d : null; }
+function safeSumm(e, d) { try { return e.summ(d); } catch (x) { return null; } }
+function cxStats(ids) {
+  var rows = CX_ENTRIES.filter(function (e) { return (!ids || ids.indexOf(e.id) >= 0) && !State.prefs.disabledSources.has(e.src); });
+  var per = rows.map(function (e) { var s = slot(cxKey(e)); return { e: e, status: s.status, d: cxData(e) }; });
+  var bad = { error: 1, unavailable: 1, ratelimited: 1 };
+  return { rows: per, n: per.length, answered: per.filter(function (r) { return r.status !== 'loading' && r.status !== 'idle'; }).length,
+    withRec: per.filter(function (r) { return r.d; }).length, failed: per.filter(function (r) { return bad[r.status]; }).length,
+    pending: per.filter(function (r) { return r.status === 'loading' || (r.status === 'idle' && r.e.from && slot(cxKey(CX_BY_ID[r.e.from])).status === 'loading'); }).length,
+    records: per.reduce(function (a, r) { return a + (r.d ? Number(r.d.total) || 0 : 0); }, 0) };
+}
+function cxModuleCount(mod) {
+  if (!cxIsConcept() || !CX_MODULES[mod] || mod === 'global-coverage') return null;
+  var st = cxStats(CX_MODULES[mod]); return st.answered ? st.records : null;
+}
+
+// Live-derived readings: a source reports an entity whose name equals the query exactly.
+function cxNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function cxDerived() {
+  if (!cxIsConcept()) return {};
+  var q = cxNorm(State.ctx.concept || State.ctx.label), out = {};
+  var add = function (type, src, label) { if (!label) return; var o = out[type] || (out[type] = { type: type, label: String(label), sources: [] }); if (o.sources.indexOf(src) < 0) o.sources.push(src); };
+  var raw = function (key) { var s = slot(key); return s.status === 'ok' && s.data && !s.data.empty ? s.data : null; };
+  var d;
+  if ((d = raw('ont:ols'))) arr(d.items).forEach(function (x) { if (cxNorm(x.label) === q) add('disease', 'EBI OLS', x.label); });
+  if ((d = raw('ont:oncotree'))) arr(d.items).forEach(function (x) { if (cxNorm(x.name) === q) add('disease', 'OncoTree', x.name); });
+  var fan = function (id, src, fn) { var r = raw(cxKey(CX_BY_ID[id])); if (r) arr(r.items).forEach(function (x) { fn(x, src); }); };
+  fan('opentargets', 'Open Targets', function (x, s) { if (x.as && cxNorm(x.title) === q) add(x.as.type, s, x.title); });
+  fan('mygene', 'MyGene.info', function (x, s) { if (cxNorm(x.symbol) === q) add('gene', s, x.symbol); });
+  fan('uniprot', 'UniProt', function (x, s) { if (x.as && cxNorm(x.as.term) === q) add('gene', s, x.as.term); });
+  fan('string', 'STRING', function (x, s) { if (cxNorm(x.title) === q) add('gene', s, x.title); });
+  fan('rxnorm', 'RxNorm', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  fan('chembl', 'ChEMBL', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  fan('fda-label', 'openFDA drug label', function (x, s) { if (cxNorm(x.title) === q) add('drug', s, x.title); });
+  Object.keys(out).forEach(function (k) { var o = out[k]; o.score = Math.min(92, 45 + 15 * o.sources.length); });
+  return out;
+}
+
+// Concept signals for the confidence box: one per source that answered with records.
+function cxConceptSignals(add) {
+  CX_ENTRIES.forEach(function (e) {
+    if (e.id === 'trials' || e.id === 'lit') return;   // already counted by the base live signals
+    var d = cxData(e), name = SRC[e.src] ? SRC[e.src].displayName : e.src;
+    if (d) add(name + ' returned ' + num(d.total) + ' result' + (d.total === 1 ? '' : 's') + ' (' + e.label.toLowerCase() + ')', 1, name);
+  });
+  var D = cxDerived(); Object.keys(D).forEach(function (k) { add('Exact ' + k + ' name match in ' + D[k].sources.join(', ') + ' (see live-derived reading)', 2, D[k].sources[0]); });
+}
+
+function conceptAnalytics() {
+  if (!cxIsConcept()) return '';
+  var st = cxStats();
+  var perSrc = st.rows.filter(function (r) { return r.d; }).map(function (r) { return [(SRC[r.e.src] ? SRC[r.e.src].displayName : r.e.src) + ' · ' + r.e.label, Number(r.d.total) || 0]; }).sort(function (a, b) { return b[1] - a[1]; });
+  var perCat = CX_CAT.map(function (g) { var rs = st.rows.filter(function (r) { return g[1].indexOf(r.e.id) >= 0; }); return [g[0] + ' (' + rs.filter(function (r) { return r.d; }).length + '/' + rs.length + ')', rs.filter(function (r) { return r.d; }).length]; });
+  var pct = st.n ? Math.round(100 * st.withRec / st.n) : 0;
+  return H`<div class="ow-cx-analytics ow-section"><h4>${icon('graph')} Free-text concept analytics (all live sources)</h4>
+    <div class="ow-stat-grid">${stat(st.n, 'Live sources queried', 'free-text search or cascaded')}${stat(st.answered + (st.pending ? ' (+' + st.pending + ' pending)' : ''), 'Sources answered', 'this search')}${stat(st.withRec, 'Sources with records', pct + '% coverage')}${stat(st.failed, 'Not reachable', 'shown as link-outs')}${stat(num(st.records), 'Records reported', 'sum of source totals')}</div>
+    <div class="ow-grid-2" style="margin-top:10px"><div class="ow-card"><div class="ow-card-title">Sources with records, by category</div>${bars(perCat, { label: 'Sources with records by category', color: 'var(--ow-teal)' })}</div>
+    <div class="ow-card"><div class="ow-card-title">Records reported per source</div>${perSrc.length ? bars(perSrc.slice(0, 12), { label: 'Records reported per source', color: 'var(--ow-lit)' }) : H`<p class="ow-subtle">${st.pending ? 'Waiting for sources…' : 'No source returned records.'}</p>`}</div></div>
+    <p class="ow-subtle">Counts are each source's own total for your exact text (lexical search hits), not clinical relevance. Sources use different search engines, so counts are not comparable across sources.</p></div>`;
+}
+
+function conceptModulePanel(mod) {
+  if (!cxIsConcept() || !CX_MODULES[mod]) return '';
+  var ids = CX_MODULES[mod], st = cxStats(ids), c = State.ctx;
+  if (mod === 'global-coverage') return H`<div class="ow-card ow-cx-card ow-section"><div class="ow-card-title">${icon('search')} “${c.concept}” coverage across all live sources</div>${table([{ label: 'Source', render: function (r) { return SRC[r.e.src] ? SRC[r.e.src].displayName : r.e.src; } }, { label: 'Search', render: function (r) { return r.e.label; } }, { label: 'Status', render: function (r) { return r.d ? badge(num(r.d.total) + ' records', 'good') : badge(r.status === 'empty' || r.status === 'ok' ? 'no records' : r.status === 'loading' ? 'loading' : r.status === 'idle' ? 'not applicable' : 'not reachable', r.status === 'error' || r.status === 'unavailable' || r.status === 'ratelimited' ? 'warn' : 'outline'); } }, { label: 'Official source', render: function (r) { var u = linkout(r.e.src, r.e.from ? '' : c.concept); return u ? ext(u, 'Open') : '—'; } }], st.rows)}</div>`;
+  var rows = CX_ENTRIES.filter(function (e) { return ids.indexOf(e.id) >= 0 && !State.prefs.disabledSources.has(e.src); });
+  return H`<section class="ow-card ow-cx-card ow-section" aria-label="Free-text concept results for this module"><div class="ow-card-head"><div><div class="ow-card-title">${icon('search')} Free-text concept “${c.concept}” in ${modMeta(mod).label}</div>
+    <div class="ow-card-sub">${st.withRec} of ${st.n} relevant live sources returned records (${num(st.records)} reported). Use “Search as …” to open a specific reading in this module.</div></div></div>
+    <ul class="ow-cx-grid">${rows.map(cxRow)}</ul></section>`;
+}
+
+// Live sources summary for every search (per source: requests, status, records).
+function liveSourcesPanel() {
+  var by = new Map();
+  State.slots.forEach(function (s, k) { if (!s.src || !SRC[s.src]) return; var o = by.get(s.src) || { ok: 0, empty: 0, bad: 0, loading: 0, n: 0, recs: 0 }; o.n++; if (s.status === 'ok') { o.ok++; var t = s.data && (s.data.total != null ? Number(s.data.total) : arr(s.data.items).length); o.recs += t || 0; } else if (s.status === 'empty') o.empty++; else if (s.status === 'loading') o.loading++; else if (s.status !== 'idle') o.bad++; by.set(s.src, o); });
+  var list = Array.from(by.entries()).sort(function (a, b) { return b[1].recs - a[1].recs; });
+  if (!list.length) return '';
+  return H`<div class="ow-card ow-section"><div class="ow-card-title">${icon('flow')} Live sources for this search</div><p class="ow-card-sub">${list.length} public sources were queried directly from your browser. Failed sources show their official link-out in each section.</p>
+    <ul class="ow-cx-grid">${list.map(function (x) { var s = SRC[x[0]], o = x[1], lo = linkout(x[0], State.ctx ? State.ctx.label : ''); return H`<li class="ow-cx-row" data-status="${o.ok ? 'ok' : o.bad ? 'error' : o.loading ? 'loading' : 'empty'}"><div class="ow-cx-head"><strong>${s.displayName}</strong> <span class="ow-subtle">${s.kind || ''}</span></div>
+      <div class="ow-small">${o.ok ? badge(num(o.recs) + ' records', 'good') : ''} ${o.loading ? badge('loading', 'outline') : ''} ${o.empty ? badge(o.empty + ' empty', 'outline') : ''} ${o.bad ? badge(o.bad + ' not reachable', 'warn') : ''} <span class="ow-subtle">${o.n} request${o.n === 1 ? '' : 's'}</span></div>${lo ? H`<a class="ow-linkbtn ow-small" href="${lo}" target="_blank" rel="noopener noreferrer">Open ${s.displayName}<span class="ow-sr"> (opens in a new tab)</span></a>` : ''}</li>`; })}</ul></div>`;
+}
+
+// Molecular Context Map nodes for a free-text concept (search matches → derived edges).
+function cxMapAdd(N, E, center) {
+  if (!cxIsConcept()) return;
+  var raw = function (id) { var e = CX_BY_ID[id], s = slot(cxKey(e)); return s.status === 'ok' && s.data && !s.data.empty ? arr(s.data.items) : []; };
+  var link = function (node, src) { E(center, node, 'search match (' + (SRC[src] ? SRC[src].displayName : src) + ')', src, 'molecular-context-derived-edge', 'Possible'); };
+  raw('mygene').slice(0, 3).forEach(function (x) { link(N('g:' + x.symbol, 'gene', x.symbol, { relevance: 45, source: 'mygene', url: x.url }), 'mygene'); });
+  raw('uniprot').slice(0, 2).forEach(function (x) { link(N('p:' + x.acc, 'protein', x.acc + ' · ' + trunc(x.title, 24), { relevance: 40, source: 'uniprot', url: x.url }), 'uniprot'); });
+  var drugs = new Set();
+  ['chembl', 'rxnorm', 'fda-label'].forEach(function (id) { raw(id).slice(0, 3).forEach(function (x) { var k = String(x.as ? x.as.term : x.title).toLowerCase(); if (drugs.has(k) || drugs.size >= 5) return; drugs.add(k); link(N('d:' + k, 'drug', titleCase(k), { relevance: 42, source: CX_BY_ID[id].src, url: x.url }), CX_BY_ID[id].src); }); });
+  var s1 = slot('ont:ols'); if (s1.status === 'ok') arr(s1.data.items).slice(0, 2).forEach(function (x) { link(N('dz:' + String(x.label).toLowerCase(), 'disease', x.label, { relevance: 44, source: 'ols', url: safeUrl(x.iri), category: 'ontology-normalized' }), 'ols'); });
+  var s2 = slot('ont:oncotree'); if (s2.status === 'ok') arr(s2.data.items).slice(0, 2).forEach(function (x) { link(N('dz:' + String(x.name).toLowerCase(), 'disease', x.name, { relevance: 44, source: 'oncotree', url: LINK.oncotree(x.code), category: 'ontology-normalized' }), 'oncotree'); });
+  raw('opentargets').slice(0, 4).forEach(function (x) { if (!x.as) return; var t = x.as.type, pre = t === 'gene' ? 'g:' : t === 'drug' ? 'd:' : 'dz:'; link(N(pre + (t === 'gene' ? x.title : String(x.title).toLowerCase()), t, x.title, { relevance: 43, source: 'opentargets', url: x.url }), 'opentargets'); });
+  raw('reactome').slice(0, 3).forEach(function (x) { link(N('pw:' + x.sub, 'pathway', trunc(x.title, 34), { relevance: 30, source: 'reactome', url: x.url }), 'reactome'); });
+  raw('quickgo').slice(0, 2).forEach(function (x) { link(N('go:' + x.sub, 'pathway', 'GO: ' + trunc(x.title, 30), { relevance: 26, source: 'quickgo', url: x.url }), 'quickgo'); });
+  raw('fda-device').slice(0, 2).forEach(function (x) { link(N('dx:' + (x.key || x.title), 'device', trunc(x.title, 30), { relevance: 28, source: 'openfda-device', url: x.url, recordKey: x.key }), 'openfda-device'); });
+  raw('dgidb').slice(0, 3).forEach(function (x) { if (!x.as) return; var gn = String(x.title).split(' → ')[1]; var dn = String(x.as.term).toLowerCase(); E(N('g:' + gn, 'gene', gn, { relevance: 40, source: 'dgidb' }), N('d:' + dn, 'drug', titleCase(dn), { relevance: 38, source: 'dgidb', url: x.url }), 'interacts with (DGIdb)', 'dgidb', 'molecular-context-source-reported', 'Likely'); });
 }
 
 /* ====================================================================
@@ -6562,15 +6732,15 @@ var CHANGES = {
    ==================================================================== */
 function interpCand(el) { var I = State.interp; return I ? I.candidates.find(function (x) { return x.key === el.getAttribute('data-key'); }) : null; }
 Object.assign(ACTIONS, {
-  'interp-use': function (el) { if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
-  'interp-search': function (el) { var c = interpCand(el); if (c) runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
+  'interp-use': function (el) { var c = interpCand(el); if (c && c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: State.interpModule || undefined }); return; } if (State.interp) runSearch(State.interp.query, { pick: el.getAttribute('data-key'), module: State.interpModule || undefined }); },
+  'interp-search': function (el) { var c = interpCand(el); if (!c) return; if (c.derivedType) { runSearch(c.normalized, { type: c.derivedType, module: MOD[c.module] ? c.module : 'overview' }); return; } runSearch(State.interp.query, { pick: c.key, module: MOD[c.module] ? c.module : 'overview' }); },
   'interp-refine': function () { var q = $('#ow-q'); if (q) { q.focus(); q.select(); } announce('Edit the query in the search box and press Explore.'); },
   'interp-sources': function (el) {
     var c = interpCand(el); if (!c) return;
     openModal('Sources for “' + typeName(c) + '”', function () { var list = interpSourcesFor(c); return H`<p class="ow-subtle">Sources Oncotics may use for this interpretation. Live sources are queried directly by your browser; others open the official site.</p>${table([{ label: 'Source', render: function (x) { return H`<strong>${x.displayName}</strong>`; } }, { label: 'Mode', render: function (x) { return modeBadge(x.id); } }, { label: 'Kind', key: 'kind' }, { label: 'Flags', render: function (x) { return flagBadges(x); } }, { label: 'Official', render: function (x) { return ext(x.officialSiteUrl || linkout(x.id, ''), 'Open'); } }], list)}`; });
   },
   'interp-pin': function (el) { var c = interpCand(el); if (!c) return; pinRecord(putRecord('interpretation', typeName(c) + ': ' + c.normalized + ' (' + c.score + ' ' + c.scoreLabel + ')', 'oncotics', { type: c.type, normalized: c.normalized, score: c.score, label: c.scoreLabel, why: c.why }, { source: 'oncotics', sourceName: 'Oncotics interpretation (heuristic)', endpoint: 'interpretation', retrievedAt: isoNow(), category: 'heuristic-interpretation' })); },
-  'interp-module': function (el) { var c = interpCand(el); if (!c) return; if (State.interp.selectedKey === c.key && State.ctx) setModule(c.module, { focus: true }); else runSearch(State.interp.query, { pick: c.key, module: c.module }); },
+  'interp-module': function (el) { var c = interpCand(el); if (!c) return; if (State.interp.selectedKey === c.key && State.ctx) setModule(c.module, { focus: true }); else if (c.derivedType) runSearch(c.normalized, { type: c.derivedType, module: c.module }); else runSearch(State.interp.query, { pick: c.key, module: c.module }); },
   'interp-export': function () { var x = interpExport(); if (!x) { toast('No interpretation yet.'); return; } exportWarn('search interpretation (JSON)').then(function (ok) { if (ok) download(CONFIG.exportNames.interpretation + '.json', 'application/json', JSON.stringify({ metadata: exportMeta(['Oncotics interpretation engine']), interpretation: x }, null, 2)); }); },
   'interp-help': function () { openModal('How interpretation confidence works', interpHelp); },
   // ---- Globe

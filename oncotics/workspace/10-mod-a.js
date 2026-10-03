@@ -51,7 +51,7 @@ function moduleSearch(id) {
 }
 function moduleHead(id, extra) {
   var m = modMeta(id);
-  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}`;
+  return H`<div class="ow-module-head"><div><h2>${m.label}</h2><p>${m.desc}</p></div><div class="ow-toolbar">${extra || ''}</div></div>${moduleSearch(id)}${id !== 'overview' ? safeRender(function () { return conceptModulePanel(id); }, 'Free-text concept results') : ''}`;
 }
 function slotTotal(key, field) { var s = slot(key); if (s.status === 'ok' && s.data) return field ? get(s.data, field) : (s.data.total != null ? s.data.total : arr(s.data.items).length); if (s.status === 'empty') return 0; return null; }
 function slotMark(key) { var s = slot(key); return { idle: 'not loaded', loading: 'loading…', error: 'failed', unavailable: 'unavailable', ratelimited: 'rate-limited' }[s.status] || null; }
@@ -219,7 +219,8 @@ registerModule({
     var used = uniq(Array.from(State.slots.values()).map(function (s) { return s.src; }).filter(Boolean));
     return H`${moduleHead('overview', H`<button type="button" class="ow-btn ow-btn-sm" data-act="export-json">${icon('download')}Export overview</button><button type="button" class="ow-btn ow-btn-sm" data-act="print">${icon('print')}Print</button>`)}
       ${interpretationPanel()}
-      ${conceptFanoutPanel()}
+      <div class="ow-section"><h3 class="ow-ov-h">${icon('globe')} Geography and molecular context</h3><div class="ow-ov-visuals">${safeRender(globePanel, 'Geographic Activity Globe')}${safeRender(molMapPanel, 'Molecular Context Map')}</div></div>
+      <div class="ow-section"><h3 class="ow-ov-h">${icon('flow')} Live sources</h3>${c.type === 'concept' ? conceptFanoutPanel() : liveSourcesPanel()}</div>
       ${imagingContextCard()}
       ${cancerTypeCard()}
       ${partialFailure() ? H`<div class="ow-notice ow-notice-warn" style="margin-top:12px">${icon('alert')}<div><strong>Partial results.</strong> Some sources could not be loaded. Other sources are still shown. <button type="button" class="ow-linkbtn" data-act="retry">Retry failed requests</button></div></div>` : ''}
@@ -227,7 +228,6 @@ registerModule({
       <div class="ow-section">${conflictPanel()}</div>
       <div class="ow-section"><h3 style="margin-bottom:8px">Records by source</h3><div class="ow-stat-grid">${stats}</div></div>
       <div class="ow-section"><h3 style="margin-bottom:8px">Counts by module</h3><div class="ow-modcounts">${moduleCounts().map(function (m) { var mm = MOD[m[0]] ? modMeta(m[0]) : null; return H`<button type="button" class="ow-modcount" data-act="tab" data-mod="${m[0]}"><span class="ow-modcount-n">${m[2] == null ? '—' : (typeof m[2] === 'number' ? num(m[2]) : m[2])}</span><span class="ow-modcount-l">${mm ? icon(mm.icon) : ''}${m[1]}</span></button>`; })}</div><p class="ow-subtle" style="margin-top:4px">“—” means not loaded yet; deeper modules load when you open them.</p></div>
-      <div class="ow-section ow-ov-visuals">${safeRender(globePanel, 'Geographic Activity Globe')}${safeRender(molMapPanel, 'Molecular Context Map')}</div>
       ${tops.length ? H`<div class="ow-section"><h3 style="margin-bottom:8px">Top matches</h3><div class="ow-grid">${tops.map(function (t) {
         var r = t[1];
         return H`<div class="ow-card"><div class="ow-subtle">${t[0]}</div><div class="ow-card-title" style="margin-top:4px">${r.key ? H`<button type="button" class="ow-linkbtn" data-act="open-rec" data-key="${r.key}">${trunc(r.title, 140)}</button>` : r.title}</div>${r.term ? H`<div class="ow-card-foot"><button type="button" class="ow-btn ow-btn-sm" data-act="search-as" data-term="${r.term}" data-type="${r.asType}">Explore ${r.asType}</button></div>` : ''}</div>`;
