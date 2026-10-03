@@ -10,6 +10,7 @@ on:
     branches: [claude/oncotics-precision-workspace-uuswkw]
     paths:
       - 'oncotics/ai/**'
+      - 'oncotics/imaging/**'
       - '.github/workflows/oncotics-ai-models.yml'
 
 permissions:
@@ -22,7 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: oncotics/ai
+          sparse-checkout: |
+            oncotics/ai
+            oncotics/imaging
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -42,3 +45,26 @@ jobs:
           name: oncotics-ai-model-packs
           path: dist/models
           retention-days: 30
+      # End-to-end: the real chest X-ray pack inside the built Imaging Workbench (headless Chromium)
+      # must reproduce the official TorchXRayVision prediction for a public test X-ray.
+      - name: Reference prediction for a public test chest X-ray
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p e2e
+          url=$(gh api repos/mlmed/torchxrayvision/contents/tests --jq '[.[] | select(.name|test("\\.(png|jpe?g)$";"i"))][0].download_url')
+          echo "test image: $url"
+          curl -fsSL -o "e2e/$(basename "$url")" "$url"
+          echo "E2E_IMAGE=$PWD/e2e/$(basename "$url")" >> "$GITHUB_ENV"
+          python oncotics/ai/reference_cxr.py "e2e/$(basename "$url")" | tee e2e/ref.json
+      - name: Run the real model in the Imaging Workbench (Chromium)
+        run: |
+          mkdir -p oncotics/site/src && bash oncotics/imaging/build.sh
+          mkdir -p web/imaging web/assets/ort
+          cp oncotics/imaging/dist/oncotics-imaging-workbench.html web/imaging/index.html
+          cp -r dist/models web/assets/models
+          (cd e2e && npm pack onnxruntime-web@1.20.1 >/dev/null && tar xzf onnxruntime-web-1.20.1.tgz)
+          for f in ort.wasm.min.mjs ort-wasm-simd-threaded.mjs ort-wasm-simd-threaded.wasm; do cp e2e/package/dist/$f web/assets/ort/; done
+          (cd web && python -m http.server 8099 >/dev/null 2>&1 &)
+          cd oncotics/ai && npm init -y >/dev/null && npm i --no-save playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          node e2e_workbench.mjs http://127.0.0.1:8099 "$E2E_IMAGE" ../../e2e/ref.json
