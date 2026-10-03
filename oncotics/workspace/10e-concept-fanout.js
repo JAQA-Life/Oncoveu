@@ -285,3 +285,10 @@ function cxMapAdd(N, E, center) {
   raw('fda-device').slice(0, 2).forEach(function (x) { link(N('dx:' + (x.key || x.title), 'device', trunc(x.title, 30), { relevance: 28, source: 'openfda-device', url: x.url, recordKey: x.key }), 'openfda-device'); });
   raw('dgidb').slice(0, 3).forEach(function (x) { if (!x.as) return; var gn = String(x.title).split(' → ')[1]; var dn = String(x.as.term).toLowerCase(); E(N('g:' + gn, 'gene', gn, { relevance: 40, source: 'dgidb' }), N('d:' + dn, 'drug', titleCase(dn), { relevance: 38, source: 'dgidb', url: x.url }), 'interacts with (DGIdb)', 'dgidb', 'molecular-context-source-reported', 'Likely'); });
 }
+
+// Quick live type checks started with EVERY search, so the Overview can score every entity type
+// (see typeAutoScore in 10d). They reuse the fan-out rows, so concept searches do not repeat them.
+function startTypeProbes(text) {
+  ['mygene', 'rxnorm', 'chembl', 'fda-device'].forEach(function (id) { var e = CX_BY_ID[id]; if (State.prefs.disabledSources.has(e.src)) return; load('cx:' + id, e.src, function (s) { return e.run(s, text); }); });
+  if (!State.prefs.disabledSources.has('ols')) load('ont:ols', 'ols', function (s) { return Loaders.ols(s, text); });
+}

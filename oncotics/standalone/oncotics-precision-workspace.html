@@ -587,6 +587,9 @@
 .oncotics-workspace .ow-conf-cell .ow-meter { flex: 1 1 90px; }
 .oncotics-workspace .ow-score-inline { font-weight: 700; font-size: .85rem; white-space: nowrap; }
 .oncotics-workspace .ow-cx-analytics h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.oncotics-workspace .ow-conf-table td.ow-conf-reading { min-width: 140px; overflow-wrap: break-word; word-break: normal; }
+.oncotics-workspace .ow-conf-table th[scope="row"] { white-space: nowrap; }
+.oncotics-workspace .ow-conf-best .ow-score-inline { text-decoration: underline; text-underline-offset: 3px; }
 </style>
 <main id="oncotics-precision-workspace" class="oncotics-workspace" aria-label="Oncotics Precision Oncology Workspace">
   <a class="ow-skip" href="#ow-main">Skip to workspace</a>
@@ -4608,7 +4611,7 @@ function interpretationPanel() {
     ${I.needsConfirm ? H`<div class="ow-notice ow-notice-warn" role="alert" style="margin-top:8px">${icon('alert')}<div><strong>${I.ambiguous ? 'Ambiguous query.' : 'Low-confidence interpretation.'}</strong> ${I.ambiguous ? 'Two or more interpretations score within 10 points of each other.' : 'No interpretation scored 50 or higher.'} Oncotics has not queried any source yet. Choose how to treat the query, refine it, or set the entity type manually.</div></div>` : ''}
     ${c && c.alleleChoices ? H`<div class="ow-notice ow-notice-warn" style="margin-top:8px">${icon('alert')}<div><strong>This identifier maps to more than one protein change.</strong> Oncotics does not pick one for you: <span class="ow-row" style="display:inline-flex;margin-top:4px">${c.alleleChoices.map(function (a) { return H`<button type="button" class="ow-btn ow-btn-sm" data-act="search-as" data-term="${a}" data-type="variant">${a}</button>`; })}</span></div></div>` : ''}
     ${c && c.derivedVariant ? H`<p class="ow-subtle" style="margin-top:6px">Protein change ${c.variantName} was derived by Oncotics from ${c.type === 'rsid' || c.genomic ? 'MyVariant.info' : 'Ensembl VEP'} (normalized by Oncotics).</p>` : ''}
-    ${allConfidenceTable(I, top)}
+    ${allConfidenceTable(I)}
     ${conceptAnalytics()}
     <div class="ow-interp-grid">${candidateCard(top, I, true)}${rest.length ? H`<div class="ow-stack"><div class="ow-subtle" style="font-weight:600">Other interpretations</div>${rest.map(function (x) { return candidateCard(x, I, false); })}</div>` : ''}</div>
     ${norm.length ? H`<p class="ow-small" style="margin-top:10px"><strong>Normalized terms used downstream:</strong> ${norm.join(' · ')}</p>` : ''}
@@ -4665,15 +4668,74 @@ function cancerTypeCard() {
       return H`<ul>${d.items.slice(0, 6).map(function (p) { return H`<li>${ext(LINK.gdcProject(p.id), p.id)} ${p.name || ''} <span class="ow-subtle">${p.cases != null ? num(p.cases) + ' cases' : ''}${p.program ? ' · ' + p.program : ''}</span></li>`; })}</ul><p class="ow-subtle">${SAFETY.gdc}</p>`; } })}</div></div></div>`;
 }
 
-// Confidence for every interpretation of the query, in one table (applied first, then by score).
-function allConfidenceTable(I, top) {
-  var list = [top].concat(I.candidates.filter(function (x) { return x !== top; }).sort(function (a, b) { return b.score - a.score; }));
-  return H`<div class="ow-section"><h4>Confidence for every interpretation (${list.length})</h4><div class="ow-table-wrap"><table class="ow-table ow-conf-table"><caption class="ow-sr">Interpretation confidence scores</caption>
-    <thead><tr><th scope="col">Interpretation</th><th scope="col">Reading</th><th scope="col">Confidence</th><th scope="col">Sources</th><th scope="col">Status</th></tr></thead><tbody>${list.map(function (c) {
-      var sel = I.selectedKey === c.key && State.ctx;
-      return H`<tr${sel ? raw(' class="ow-conf-sel"') : ''}><td>${interpTypeBadge(c)}</td><td><strong class="ow-break">${c.normalized}</strong></td><td><div class="ow-conf-cell">${scoreMeter(c)}<span class="ow-score-inline ow-score-${scoreKind(c.score)}">${c.score} · ${c.scoreLabel}</span></div></td>
-        <td class="ow-small">${c.supporting.length ? c.supporting.length + ' supporting' : H`<span class="ow-subtle">—</span>`}${c.conflicting.length ? H` · <span class="ow-bad-t">${c.conflicting.length} conflicting</span>` : ''}</td>
-        <td>${sel ? badge('In use', 'good') : H`<button type="button" class="ow-btn ow-btn-sm" data-act="interp-use" data-key="${c.key}">Use</button>`}</td></tr>`; })}</tbody></table></div></div>`;
+// Confidence for EVERY entity type, on every search (fixed order). A type the interpreter matched shows
+// that candidate's score; any other type gets an automatic score from local patterns plus the live type
+// probes started with every search (MyGene, RxNorm, ChEMBL, EBI OLS, openFDA devices; see startTypeProbes).
+var TYPE_MEMBERS = { gene: ['gene', 'genectx', 'protein', 'target'], variant: ['variant', 'rsid', 'hgvs', 'ambiguous'], drug: ['drug', 'biologic', 'drugctx', 'rxcui'], disease: ['disease'], device: ['device'],
+  vaccine: ['vaccine'], fertility: ['fertility', 'drugctx', 'genectx'], imaging: ['imaging'], concept: ['concept'], pmid: ['pmid', 'doi'] };
+function typeProbe(id) { var e = CX_BY_ID[id], s = e ? slot(cxKey(e)) : { status: 'idle' }; return s; }
+function typeAutoScore(type, q) {
+  var t = String(q || '').trim(), low = t.toLowerCase(), cn = cxNorm(t), sc = 0, why = [], sup = [], pending = false;
+  var addW = function (n, text, src) { sc += n; why.push(text); if (src) sup.push(src); };
+  var probe = function (id, fn) { var s = typeProbe(id); if (s.status === 'loading') pending = true; else if (s.status === 'ok' && s.data && !s.data.empty) fn(arr(s.data.items)); return s.status; };
+  switch (type) {
+    case 'gene':
+      if (/^[A-Z][A-Z0-9]{1,9}(-[A-Z0-9]{1,4})?$/.test(t)) addW(18, 'Looks like a gene symbol, but it is not in the Oncotics gene list'); else addW(3, 'No gene symbol or alias pattern matched');
+      if (probe('mygene', function (it) { if (/^[A-Za-z][A-Za-z0-9-]{1,14}$/.test(t) && it.some(function (x) { return cxNorm(x.symbol) === cn; })) addW(50, 'MyGene.info reports a human gene with exactly this symbol', 'MyGene.info'); else addW(4, 'MyGene.info returned related genes, but none with this exact symbol', 'MyGene.info'); }) === 'empty') why.push('MyGene.info found no human gene');
+      break;
+    case 'variant':
+      var toks = t.split(/\s+/); if (toks.length >= 2 && parseProteinChange(toks.slice(1).join(''))) addW(22, 'Contains a protein-change notation'); else if (/\b[A-Z]\d{1,4}[A-Z*]\b|c\.\d|p\.[A-Z]/.test(t)) addW(14, 'Contains a variant-like token'); else addW(2, 'No variant notation (gene + protein change, rsID or HGVS) found');
+      break;
+    case 'drug':
+      if (/(mab|nib|tinib|ciclib|parib|platin|rubicin|taxel|mustine|lisib|rafenib|zomib|cept|leucel)$/i.test(low)) addW(28, 'Ends like a drug or biologic name'); else addW(4, 'No drug or brand name matched');
+      probe('rxnorm', function (it) { if (it.some(function (x) { return cxNorm(x.title) === cn; })) addW(45, 'RxNorm has a concept with exactly this name', 'RxNorm'); else addW(5, 'RxNorm returned approximate matches only', 'RxNorm'); });
+      probe('chembl', function (it) { if (it.some(function (x) { return cxNorm(x.title) === cn; })) addW(15, 'ChEMBL has a molecule with exactly this name', 'ChEMBL'); });
+      break;
+    case 'disease':
+      if (/cancer|carcinoma|tumou?r|neoplasm|leuka?emia|lymphoma|myeloma|sarcoma|melanoma|glioma|blastoma|mesothelioma|disease|syndrome/i.test(t)) addW(30, 'Contains a disease or cancer term'); else addW(5, 'No disease or cancer term matched');
+      var ol = slot('ont:ols'); if (ol.status === 'loading') pending = true; else if (ol.status === 'ok') { if (arr(ol.data.items).some(function (x) { return cxNorm(x.label) === cn; })) addW(40, 'EBI OLS has an ontology term (MONDO / NCIt / EFO) with exactly this label', 'EBI OLS'); else addW(6, 'EBI OLS returned related ontology terms', 'EBI OLS'); }
+      break;
+    case 'device':
+      if (/\b(test|assay|kit|device|panel|diagnostic|dx|sequencing|ngs|pcr|ihc|510\(k\)|pma|implant|catheter|pump|system)\b/i.test(t)) addW(25, 'Contains a device or diagnostic term'); else addW(3, 'No device term, 510(k)/PMA/De Novo number, product code or UDI matched');
+      probe('fda-device', function (it) { addW(Math.min(25, 8 + it.length * 3), 'openFDA has device authorization records matching this name', 'openFDA device'); });
+      break;
+    case 'vaccine': if (/vaccin|immuni[sz]|toxoid|booster/i.test(t)) addW(30, 'Contains a vaccine or immunization term'); else addW(1, 'No vaccine or immunization term matched'); break;
+    case 'fertility': if (/fertil|pregnan|ovar|sperm|embryo|oocyte|reproduct|lactat|breastfeed|contracept|menopaus|gonad|amh\b|ivf\b/i.test(t)) addW(30, 'Contains a reproductive-health term'); else addW(1, 'No Onco-Fertility term matched'); break;
+    case 'imaging': if (/imaging|scan|\bmri\b|\bct\b|\bpet\b|ultrasound|radiolog|mammogra|x-?ray|dicom|radiomic/i.test(t)) addW(30, 'Contains an imaging term'); else addW(1, 'No imaging term matched'); break;
+    case 'concept': addW(20, 'Any text can be searched as a free-text clinical concept'); var lt = slotTotal('lit:list'), tt = slotTotal('trials:list'); if (lt) addW(Math.min(10, 2 + Math.round(Math.log10(lt + 1) * 3)), 'Europe PMC has records for it', 'Europe PMC'); if (tt) addW(Math.min(8, 2 + Math.round(Math.log10(tt + 1) * 3)), 'ClinicalTrials.gov has studies for it', 'ClinicalTrials.gov'); break;
+    case 'pmid': if (/^(pmid:?\s*)?\d{1,9}$/i.test(t)) addW(60, 'Looks like a PMID'); else addW(0, 'Not a PMID (PMIDs are 1–9 digits)'); break;
+  }
+  sc = Math.max(0, Math.min(89, sc));
+  return { score: sc, scoreLabel: scoreLabel(sc), why: why.join('; '), supporting: uniq(sup), pending: pending };
+}
+function typeConfidenceRows(I) {
+  var q = I.query, sel = State.ctx ? I.selectedKey : null;
+  var rows = CORRECT_TYPES.map(function (ct) {
+    var type = ct[0], mem = TYPE_MEMBERS[type] || [type];
+    var cands = I.candidates.filter(function (c) { return mem.indexOf(c.type) >= 0; }).sort(function (a, b) { return (b.key === sel) - (a.key === sel) || b.score - a.score; });
+    var c = cands[0];
+    if (c) return { type: type, name: ct[1], cand: c, reading: c.normalized, score: c.score, scoreLabel: c.scoreLabel, why: c.why, supporting: c.supporting, conflicting: c.conflicting, inUse: c.key === sel, origin: c.derivedType ? 'Live-derived reading' : 'Interpreter' };
+    var a = typeAutoScore(type, q);
+    var canForce = false; try { canForce = !!forceEntity(q, type); } catch (e) { canForce = false; }
+    return { type: type, name: ct[1], cand: null, reading: q, score: a.score, scoreLabel: a.scoreLabel, why: a.why, supporting: a.supporting, conflicting: [], inUse: false, origin: a.pending ? 'Automatic (live checks loading…)' : 'Automatic', canForce: canForce };
+  });
+  // Readings of other kinds (trial IDs, accessions) are listed after the ten entity types.
+  var covered = [].concat.apply([], Object.keys(TYPE_MEMBERS).map(function (k) { return TYPE_MEMBERS[k]; }));
+  I.candidates.filter(function (c) { return covered.indexOf(c.type) < 0; }).forEach(function (c) { rows.push({ type: c.type, name: typeName(c), cand: c, reading: c.normalized, score: c.score, scoreLabel: c.scoreLabel, why: c.why, supporting: c.supporting, conflicting: c.conflicting, inUse: c.key === sel, origin: 'Interpreter' }); });
+  return rows;
+}
+function allConfidenceTable(I) {
+  var rows = typeConfidenceRows(I), best = rows.reduce(function (m, r) { return r.score > m ? r.score : m; }, 0);
+  return H`<div class="ow-section"><h4>Confidence by entity type (${rows.length})</h4>
+    <p class="ow-subtle">Every search is scored for every entity type. Types the interpreter matched show that reading's score; the others are scored automatically from text patterns and quick live checks (MyGene.info, RxNorm, ChEMBL, EBI OLS, openFDA devices). Scores are heuristic routing scores (0–100), not probabilities.</p>
+    <div class="ow-table-wrap"><table class="ow-table ow-conf-table"><caption class="ow-sr">Interpretation confidence for every entity type</caption>
+    <thead><tr><th scope="col">Entity type</th><th scope="col">Reading</th><th scope="col">Confidence</th><th scope="col">Why</th><th scope="col">Sources</th><th scope="col">Status</th></tr></thead><tbody>${rows.map(function (r) {
+      var act = r.inUse ? badge('In use', 'good') : r.cand ? H`<button type="button" class="ow-btn ow-btn-sm" data-act="interp-use" data-key="${r.cand.key}">Use</button>` : r.canForce ? H`<button type="button" class="ow-btn ow-btn-sm ow-btn-ghost" data-act="search-as" data-term="${I.query}" data-type="${r.type}">Search as ${r.name.toLowerCase()}</button>` : H`<span class="ow-subtle ow-small">Not applicable</span>`;
+      return H`<tr class="${r.inUse ? 'ow-conf-sel' : ''} ${r.score === best && best > 0 ? 'ow-conf-best' : ''}"><th scope="row"><span class="ow-badge">${r.name}</span><div class="ow-subtle ow-small">${r.origin}</div></th><td class="ow-conf-reading"><strong>${trunc(r.reading, 60)}</strong></td>
+        <td><div class="ow-conf-cell">${scoreMeter({ score: r.score, scoreLabel: r.scoreLabel })}<span class="ow-score-inline ow-score-${scoreKind(r.score)}">${r.score} · ${r.scoreLabel}</span></div></td>
+        <td class="ow-small">${trunc(r.why || '', 160)}</td>
+        <td class="ow-small">${arr(r.supporting).length ? arr(r.supporting).slice(0, 3).join(', ') + (r.supporting.length > 3 ? ' +' + (r.supporting.length - 3) : '') : H`<span class="ow-subtle">—</span>`}${arr(r.conflicting).length ? H`<div class="ow-bad-t">${r.conflicting.length} conflicting</div>` : ''}</td>
+        <td>${act}</td></tr>`; })}</tbody></table></div></div>`;
 }
 /* ====================================================================
    FREE-TEXT CONCEPT FAN-OUT
@@ -4961,6 +5023,13 @@ function cxMapAdd(N, E, center) {
   raw('quickgo').slice(0, 2).forEach(function (x) { link(N('go:' + x.sub, 'pathway', 'GO: ' + trunc(x.title, 30), { relevance: 26, source: 'quickgo', url: x.url }), 'quickgo'); });
   raw('fda-device').slice(0, 2).forEach(function (x) { link(N('dx:' + (x.key || x.title), 'device', trunc(x.title, 30), { relevance: 28, source: 'openfda-device', url: x.url, recordKey: x.key }), 'openfda-device'); });
   raw('dgidb').slice(0, 3).forEach(function (x) { if (!x.as) return; var gn = String(x.title).split(' → ')[1]; var dn = String(x.as.term).toLowerCase(); E(N('g:' + gn, 'gene', gn, { relevance: 40, source: 'dgidb' }), N('d:' + dn, 'drug', titleCase(dn), { relevance: 38, source: 'dgidb', url: x.url }), 'interacts with (DGIdb)', 'dgidb', 'molecular-context-source-reported', 'Likely'); });
+}
+
+// Quick live type checks started with EVERY search, so the Overview can score every entity type
+// (see typeAutoScore in 10d). They reuse the fan-out rows, so concept searches do not repeat them.
+function startTypeProbes(text) {
+  ['mygene', 'rxnorm', 'chembl', 'fda-device'].forEach(function (id) { var e = CX_BY_ID[id]; if (State.prefs.disabledSources.has(e.src)) return; load('cx:' + id, e.src, function (s) { return e.run(s, text); }); });
+  if (!State.prefs.disabledSources.has('ols')) load('ont:ols', 'ols', function (s) { return Loaders.ols(s, text); });
 }
 /* ====================================================================
    PER-MODULE SEARCH (independent of the common search)
@@ -6510,6 +6579,7 @@ function runSearch(term, opts) {
     // Ambiguous between specific readings: show candidates, query nothing until the user chooses.
     startGeneration();
     State.entity = null; State.ctx = null; State.interp = I; State.interpModule = opts.module && opts.module !== 'overview' ? opts.module : null;
+    startTypeProbes(chk.value);   // score every entity type while the user chooses
     $('#ow-q').value = chk.value;
     setModule('overview', { quiet: true });
     announce((I.ambiguous ? 'Ambiguous query. ' : 'Low-confidence interpretation. ') + 'Choose how to treat it in the Search Interpretation panel. No source has been queried.', true);
@@ -6529,6 +6599,7 @@ function runSearch(term, opts) {
   }
   $('#ow-q').value = chk.value;
   executePlan(State.ctx);
+  startTypeProbes(chk.value);   // confidence for every entity type (Overview)
   Events.emit('search', { type: e.type });
   if (selC && selC.bioTab) ui('biology').tab = selC.bioTab;
   if (selC && selC.lens) { if (selC.module === 'onco-fertility') ui('fert').tab = selC.lens; if (selC.module === 'vaccines-cancer-immunization') ui('vaccines').tab = selC.lens; }

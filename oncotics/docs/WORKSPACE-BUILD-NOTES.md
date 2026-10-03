@@ -104,6 +104,14 @@ site build copies that file to `/precision-oncology-workspace/`.
     the workspace as that type.
   - The panel also shows fan-out analytics: sources queried, answered, with records and not reachable,
     records per source, and sources with records by category.
+- Confidence by entity type: on every search the Overview scores all ten types (Gene, Variant,
+  Drug / biologic, Disease / cancer type, Device / diagnostic, Vaccine, Onco-Fertility concept, Imaging
+  concept, Free-text concept, PMID). This lives in `typeConfidenceRows` / `typeAutoScore` in `10d`.
+  - A type the interpreter matched shows that reading's score.
+  - Every other type gets an automatic score from text patterns plus quick live checks started with
+    each search (`startTypeProbes`: MyGene, RxNorm, ChEMBL, EBI OLS, openFDA devices). Automatic
+    scores are capped at 89.
+  - Each row offers "Use" or "Search as …".
 - Overview order:
   1. Search Interpretation, with a confidence table for every interpretation, analytics and the
      candidate cards.

@@ -192,6 +192,7 @@ function runSearch(term, opts) {
     // Ambiguous between specific readings: show candidates, query nothing until the user chooses.
     startGeneration();
     State.entity = null; State.ctx = null; State.interp = I; State.interpModule = opts.module && opts.module !== 'overview' ? opts.module : null;
+    startTypeProbes(chk.value);   // score every entity type while the user chooses
     $('#ow-q').value = chk.value;
     setModule('overview', { quiet: true });
     announce((I.ambiguous ? 'Ambiguous query. ' : 'Low-confidence interpretation. ') + 'Choose how to treat it in the Search Interpretation panel. No source has been queried.', true);
@@ -211,6 +212,7 @@ function runSearch(term, opts) {
   }
   $('#ow-q').value = chk.value;
   executePlan(State.ctx);
+  startTypeProbes(chk.value);   // confidence for every entity type (Overview)
   Events.emit('search', { type: e.type });
   if (selC && selC.bioTab) ui('biology').tab = selC.bioTab;
   if (selC && selC.lens) { if (selC.module === 'onco-fertility') ui('fert').tab = selC.lens; if (selC.module === 'vaccines-cancer-immunization') ui('vaccines').tab = selC.lens; }
